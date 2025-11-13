@@ -1,0 +1,175 @@
+package com.watxaut.rolenonplayinggame.domain.model
+
+import java.time.Instant
+import java.util.UUID
+
+/**
+ * Core character model representing a player's autonomous character
+ */
+data class Character(
+    val id: String = UUID.randomUUID().toString(),
+    val userId: String,
+    val name: String,
+    val level: Int = 1,
+    val experience: Long = 0,
+
+    // Core stats
+    val strength: Int = 1,
+    val intelligence: Int = 1,
+    val agility: Int = 1,
+    val luck: Int = 1,
+    val charisma: Int = 1,
+    val vitality: Int = 1,
+
+    // Current state
+    val currentHp: Int,
+    val maxHp: Int,
+    val currentLocation: String = "Heartlands - Starting Town",
+
+    // Personality (hidden from player initially)
+    val personalityTraits: PersonalityTraits,
+
+    // Job class
+    val jobClass: JobClass,
+
+    // Resources
+    val gold: Long = 0,
+
+    // Inventory and equipment (stored as JSON in database)
+    val inventory: List<String> = emptyList(),
+    val equippedItems: Map<String, String> = emptyMap(),
+
+    // Discovered locations
+    val discoveredLocations: List<String> = listOf("Heartlands - Starting Town"),
+
+    // Active quests (stored as JSON)
+    val activeQuests: List<String> = emptyList(),
+
+    // Timestamps
+    val createdAt: Instant = Instant.now(),
+    val lastActiveAt: Instant = Instant.now()
+) {
+    /**
+     * Calculate experience needed for next level
+     */
+    fun experienceForNextLevel(): Long {
+        return level * 100L
+    }
+
+    /**
+     * Check if character should level up
+     */
+    fun shouldLevelUp(): Boolean {
+        return experience >= experienceForNextLevel()
+    }
+
+    /**
+     * Get health percentage
+     */
+    fun getHealthPercentage(): Float {
+        return currentHp.toFloat() / maxHp.toFloat()
+    }
+
+    /**
+     * Check if character is in danger (low health)
+     */
+    fun isInDanger(): Boolean {
+        return getHealthPercentage() < 0.3f
+    }
+
+    /**
+     * Get stat value by type
+     */
+    fun getStat(statType: StatType): Int {
+        return when (statType) {
+            StatType.STRENGTH -> strength
+            StatType.INTELLIGENCE -> intelligence
+            StatType.AGILITY -> agility
+            StatType.LUCK -> luck
+            StatType.CHARISMA -> charisma
+            StatType.VITALITY -> vitality
+        }
+    }
+
+    /**
+     * Calculate max HP based on vitality
+     */
+    fun calculateMaxHp(): Int {
+        return 50 + (vitality * 10) + (level * 5)
+    }
+
+    companion object {
+        /**
+         * Create a new character with initial stat allocation
+         */
+        fun create(
+            userId: String,
+            name: String,
+            jobClass: JobClass,
+            initialStats: Map<StatType, Int>
+        ): Character {
+            val vitality = initialStats[StatType.VITALITY] ?: 1
+            val maxHp = 50 + (vitality * 10)
+
+            val personalityTraits = PersonalityTraits.forJobClass(jobClass)
+
+            return Character(
+                userId = userId,
+                name = name,
+                jobClass = jobClass,
+                strength = initialStats[StatType.STRENGTH] ?: 1,
+                intelligence = initialStats[StatType.INTELLIGENCE] ?: 1,
+                agility = initialStats[StatType.AGILITY] ?: 1,
+                luck = initialStats[StatType.LUCK] ?: 1,
+                charisma = initialStats[StatType.CHARISMA] ?: 1,
+                vitality = vitality,
+                currentHp = maxHp,
+                maxHp = maxHp,
+                personalityTraits = personalityTraits
+            )
+        }
+    }
+}
+
+/**
+ * Character stats container
+ */
+data class CharacterStats(
+    val strength: Int,
+    val intelligence: Int,
+    val agility: Int,
+    val luck: Int,
+    val charisma: Int,
+    val vitality: Int
+) {
+    fun getTotalPoints(): Int {
+        return strength + intelligence + agility + luck + charisma + vitality
+    }
+
+    fun toMap(): Map<StatType, Int> {
+        return mapOf(
+            StatType.STRENGTH to strength,
+            StatType.INTELLIGENCE to intelligence,
+            StatType.AGILITY to agility,
+            StatType.LUCK to luck,
+            StatType.CHARISMA to charisma,
+            StatType.VITALITY to vitality
+        )
+    }
+
+    companion object {
+        /**
+         * Create default starting stats (10 points total, minimum 1 per stat)
+         */
+        fun default(): CharacterStats {
+            return CharacterStats(
+                strength = 1,
+                intelligence = 1,
+                agility = 1,
+                luck = 1,
+                charisma = 1,
+                vitality = 5  // Extra points in vitality for survivability
+            )
+        }
+    }
+}
