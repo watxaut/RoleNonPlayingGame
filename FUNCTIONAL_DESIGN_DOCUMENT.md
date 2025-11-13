@@ -26,8 +26,8 @@ controllers.
 - **Idle/incremental mechanics**: Progress continues even when the app is closed
 - **Social autonomous interactions**: Characters can meet and interact with other players'
   characters without player intervention
-- **Achievement-driven engagement**: Players are rewarded for witnessing their character's
-  accomplishments
+- **Achievement-driven engagement**: Characters can accomplish achievements and players can see
+  those. Players themselves cannot accomplish any achievement.
 - **Story archaeology**: Players discover lore and narrative through their character's experiences
 
 ### 1.3 Target Audience
@@ -85,6 +85,7 @@ Players choose one starting job that influences character behavior and abilities
 
 - **Warrior**: Focuses on melee combat, high survivability, prefers direct confrontation
 - **Assassin**: Stealthy approach, critical strikes, risk-taking behavior
+- **Rogue**: Stealth and cunning, picks locks and disarms traps, strikes from shadows, independent and resourceful behavior, opportunistic and untrustworthy in interactions
 - **Archer**: Ranged combat, tactical positioning, cautious engagement
 
 **Magic Classes:**
@@ -170,7 +171,108 @@ Characters operate on a **priority-based decision tree** evaluated continuously:
 7. **Social** (Other characters nearby): Interact, trade, party up
 8. **Idle Behavior** (No stimuli): Rest, practice skills, reminisce
 
-### 3.2 Combat Behavior
+### 3.2 Action Resolution System (The d21 Mechanic)
+
+All character actions that have a chance of success or failure are resolved using a **21-sided die
+roll** combined with relevant character stats.
+
+#### 3.2.1 The Roll
+
+When a character attempts any action with uncertain outcome:
+
+1. Roll a 21-sided die (d21): possible results are 1-21
+2. Apply the following special cases:
+    - **Roll of 21 (Critical Success)**: Action automatically succeeds, often with bonus effects
+    - **Roll of 1 (Critical Failure)**: Action automatically fails, often with negative
+      consequences
+    - **Rolls of 2-20**: Success/failure determined by character stats vs. action difficulty
+
+#### 3.2.2 Calculating Success (Rolls 2-20)
+
+For rolls between 2-20, the formula is:
+
+**Success Threshold** = Base Difficulty - (Relevant Stat Bonuses) - (Dice Roll)
+
+- If threshold ≤ 0: **Success**
+- If threshold > 0: **Failure**
+
+**Relevant Stats by Action Type:**
+
+- **Combat (Attack)**: Power (STR) or Agility (AGI) vs. enemy defense
+- **Combat (Dodge)**: Agility (AGI) vs. enemy attack
+- **Social Interaction**: Charm (CHA) vs. NPC disposition
+- **Trap Detection/Disarm**: Intelligence (INT) or Agility (AGI) vs. trap complexity
+- **Luck Events**: Luck (LUK) as primary modifier
+- **Survival**: Vitality (VIT) vs. environmental hazard
+
+#### 3.2.3 Difficulty Tiers
+
+Actions have difficulty ratings that set the base threshold:
+
+- **Trivial**: Difficulty 5 (almost always succeeds unless roll 1)
+- **Easy**: Difficulty 10
+- **Moderate**: Difficulty 15
+- **Hard**: Difficulty 20
+- **Very Hard**: Difficulty 25
+- **Nearly Impossible**: Difficulty 30+
+
+**Example:**
+
+```
+Character attempts to disarm a trap (Hard difficulty = 20)
+Character has INT: 12, AGI: 8 (uses higher stat: INT)
+Rolls d21: Gets 14
+
+Calculation: 20 (difficulty) - 12 (INT) - 14 (roll) = -6
+Result: Success! The trap is disarmed.
+
+If they had rolled 3 instead:
+20 - 12 - 3 = 5 (positive number)
+Result: Failure. Trap triggers.
+```
+
+#### 3.2.4 Critical Results
+
+**Critical Success (Natural 21):**
+
+- Combat: Maximum damage + additional effect (knockdown, disarm, stun)
+- Social: NPC becomes friendly/impressed, better rewards
+- Loot: Find rare/additional items
+- Trap: Disarm and recover trap components
+- Exploration: Discover hidden passages or secrets
+
+**Critical Failure (Natural 1):**
+
+- Combat: Miss and become vulnerable (enemy gets advantage)
+- Social: Offend NPC, worse prices, quest refusal
+- Loot: Trigger trap or alert enemies
+- Trap: Take full damage and alert nearby enemies
+- Exploration: Get lost or stumble into danger
+
+#### 3.2.5 Luck Stat Influence
+
+The Luck (LUK) stat provides a unique benefit:
+
+- **For every 5 points in LUK**: +1% chance to reroll a result of 1
+- **For every 10 points in LUK**: Critical success range expands (at 20 LUK: rolls of 20-21 are
+  both critical successes)
+- **High LUK** also improves loot quality rolls
+
+This makes Luck builds viable and exciting, as they can turn bad situations into unexpected wins.
+
+#### 3.2.6 Activity Log Examples
+
+The activity log should reflect the drama of dice rolls:
+
+```
+"Attacked Goblin Warrior. *CRITICAL HIT!* Dealt 45 damage. Goblin stunned."
+"Attempted to persuade Merchant. Rolled poorly. Merchant unimpressed. Prices remain high."
+"Tried to dodge Cave Bear's attack. *CRITICAL FAILURE!* Took 28 damage and knocked prone."
+"Searched treasure chest. Lucky find! Discovered Epic item: Champion's Greatsword"
+"Attempted to disarm trap. Success! Trap disabled. Recovered trap components."
+```
+
+### 3.3 Combat Behavior
 
 **Engagement Decision:**
 
