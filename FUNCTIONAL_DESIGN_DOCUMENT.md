@@ -284,10 +284,11 @@ The activity log should reflect the drama of dice rolls:
 **Combat Strategy:**
 
 - Job class determines ability usage priority
+- Each attack/defense action uses the d21 roll system
 - Health monitoring triggers retreat at personality-dependent thresholds
 - Loot evaluation after victory determines if character collects items
 
-### 3.3 Exploration Behavior
+### 3.4 Exploration Behavior
 
 **Movement Patterns:**
 
@@ -301,7 +302,7 @@ The activity log should reflect the drama of dice rolls:
 - Discovery logged in activity history
 - Some discoveries unlock new behavioral options
 
-### 3.4 Quest Engagement
+### 3.5 Quest Engagement
 
 **Quest Acquisition:**
 
@@ -316,7 +317,7 @@ The activity log should reflect the drama of dice rolls:
     - Better opportunity appears (low commitment personalities)
 - Quest completion grants: XP, gold, items, reputation
 
-### 3.5 Social Interaction (Multiplayer)
+### 3.6 Social Interaction (Multiplayer)
 
 When encountering another player's character:
 
@@ -330,11 +331,11 @@ When encountering another player's character:
 
 **Interaction Logic:**
 
-- Charm stat influences success chance
+- Charm stat influences success chance (uses d21 roll for interactions)
 - Personality compatibility affects interaction type
 - Both characters' AIs negotiate autonomously
 
-### 3.6 Time-Based Behavior
+### 3.7 Time-Based Behavior
 
 **Active Play (Player watching):**
 
