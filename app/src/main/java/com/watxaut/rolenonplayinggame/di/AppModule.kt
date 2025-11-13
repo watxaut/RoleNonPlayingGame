@@ -1,5 +1,6 @@
 package com.watxaut.rolenonplayinggame.di
 
+import com.watxaut.rolenonplayinggame.core.combat.CombatSystem
 import com.watxaut.rolenonplayinggame.core.dice.DiceRoller
 import dagger.Module
 import dagger.Provides
@@ -21,6 +22,12 @@ object AppModule {
     @Singleton
     fun provideDiceRoller(): DiceRoller {
         return DiceRoller()
+    }
+
+    @Provides
+    @Singleton
+    fun provideCombatSystem(diceRoller: DiceRoller): CombatSystem {
+        return CombatSystem(diceRoller)
     }
 
     @Provides

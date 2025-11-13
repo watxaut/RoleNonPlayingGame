@@ -2,6 +2,7 @@ package com.watxaut.rolenonplayinggame.di
 
 import android.content.Context
 import androidx.room.Room
+import com.watxaut.rolenonplayinggame.data.local.dao.ActivityDao
 import com.watxaut.rolenonplayinggame.data.local.dao.CharacterDao
 import com.watxaut.rolenonplayinggame.data.local.database.GameDatabase
 import dagger.Module
@@ -36,5 +37,11 @@ object DatabaseModule {
     @Singleton
     fun provideCharacterDao(database: GameDatabase): CharacterDao {
         return database.characterDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideActivityDao(database: GameDatabase): ActivityDao {
+        return database.activityDao()
     }
 }

@@ -95,6 +95,13 @@ enum class JobClass(
             secondaryStat to 0.3f
         )
     }
+
+    /**
+     * Get stat priorities as list of stat names for level-up allocation.
+     * Used by GameViewModel for autonomous stat distribution.
+     */
+    val statPriorities: List<String>
+        get() = listOf(primaryStat.name, secondaryStat.name)
 }
 
 /**

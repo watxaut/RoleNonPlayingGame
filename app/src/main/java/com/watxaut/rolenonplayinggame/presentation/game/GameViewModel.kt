@@ -1,0 +1,255 @@
+package com.watxaut.rolenonplayinggame.presentation.game
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.watxaut.rolenonplayinggame.core.ai.BasicDecisionEngine
+import com.watxaut.rolenonplayinggame.core.ai.DecisionContext
+import com.watxaut.rolenonplayinggame.domain.model.Activity
+import com.watxaut.rolenonplayinggame.domain.model.Character
+import com.watxaut.rolenonplayinggame.domain.repository.ActivityRepository
+import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
+import com.watxaut.rolenonplayinggame.domain.usecase.ExecuteDecisionUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+import kotlin.random.Random
+
+/**
+ * ViewModel for the Game Screen.
+ *
+ * Per TECHNICAL_IMPLEMENTATION_DOCUMENT.md Week 3:
+ * - Manages AI decision loop (3-10s timer)
+ * - Executes decisions through use case
+ * - Updates character state
+ * - Provides activity log to UI
+ * - Handles real-time gameplay
+ */
+@HiltViewModel
+class GameViewModel @Inject constructor(
+    private val characterRepository: CharacterRepository,
+    private val activityRepository: ActivityRepository,
+    private val executeDecisionUseCase: ExecuteDecisionUseCase,
+    private val decisionEngine: BasicDecisionEngine
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(GameUiState())
+    val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
+
+    private var decisionLoopJob: Job? = null
+    private var characterId: String? = null
+
+    /**
+     * Load character and start the autonomous AI loop.
+     */
+    fun loadCharacter(characterId: String) {
+        this.characterId = characterId
+
+        viewModelScope.launch {
+            // Load character from repository
+            characterRepository.getCharacter(characterId).collect { character ->
+                if (character != null) {
+                    _uiState.update { it.copy(character = character, isLoading = false) }
+
+                    // Start decision loop if not already running
+                    if (decisionLoopJob == null || decisionLoopJob?.isActive == false) {
+                        startDecisionLoop(character)
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            error = "Character not found",
+                            isLoading = false
+                        )
+                    }
+                }
+            }
+        }
+
+        // Load activity log
+        viewModelScope.launch {
+            activityRepository.getActivitiesForCharacter(characterId, limit = 50)
+                .collect { activities ->
+                    _uiState.update { it.copy(activityLog = activities) }
+                }
+        }
+    }
+
+    /**
+     * Start the autonomous AI decision loop.
+     * Character makes decisions every 3-10 seconds.
+     */
+    private fun startDecisionLoop(initialCharacter: Character) {
+        decisionLoopJob?.cancel() // Cancel any existing loop
+
+        decisionLoopJob = viewModelScope.launch {
+            var character = initialCharacter
+
+            while (true) {
+                try {
+                    // Random delay between 3-10 seconds
+                    val delayMs = Random.nextLong(3000, 10000)
+                    delay(delayMs)
+
+                    // Build decision context
+                    val context = buildDecisionContext(character)
+
+                    // AI makes a decision
+                    val decision = decisionEngine.makeDecision(context)
+
+                    // Update UI to show decision is being executed
+                    _uiState.update {
+                        it.copy(currentAction = "Executing: ${decision.javaClass.simpleName}...")
+                    }
+
+                    // Execute the decision
+                    val result = executeDecisionUseCase(character, decision)
+
+                    result.onSuccess { outcome ->
+                        // Update character state
+                        character = outcome.updatedCharacter
+                        _uiState.update {
+                            it.copy(
+                                character = character,
+                                currentAction = outcome.activity.description,
+                                combatLog = if (outcome.combatLog.isNotEmpty()) {
+                                    outcome.combatLog
+                                } else {
+                                    emptyList()
+                                }
+                            )
+                        }
+
+                        // Check for level up
+                        if (character.experience >= character.level * 100) {
+                            levelUpCharacter(character)
+                        }
+                    }.onFailure { error ->
+                        _uiState.update {
+                            it.copy(
+                                error = "Error executing decision: ${error.message}",
+                                currentAction = "Idle"
+                            )
+                        }
+                    }
+
+                } catch (e: Exception) {
+                    _uiState.update {
+                        it.copy(
+                            error = "AI error: ${e.message}",
+                            currentAction = "Idle"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Build decision context for the AI.
+     */
+    private fun buildDecisionContext(character: Character): DecisionContext {
+        // For Week 3, use simple context
+        // Future weeks will expand this with real location data, quests, etc.
+
+        val nearbyLocations = when (character.currentLocation) {
+            "Willowdale Village" -> listOf("Meadowbrook Fields")
+            "Meadowbrook Fields" -> listOf("Willowdale Village", "Whispering Woods")
+            else -> listOf("Willowdale Village")
+        }
+
+        val hasInn = character.currentLocation == "Willowdale Village"
+
+        return DecisionContext(
+            currentLocation = character.currentLocation,
+            currentHp = character.currentHp,
+            maxHp = character.stats.maxHp,
+            currentGold = character.gold,
+            level = character.level,
+            nearbyLocations = nearbyLocations,
+            hasInnAccess = hasInn,
+            hasActiveQuest = false // TODO: Implement quest system in future weeks
+        )
+    }
+
+    /**
+     * Handle character level up.
+     */
+    private fun levelUpCharacter(character: Character) {
+        viewModelScope.launch {
+            // Auto-allocate stat points based on job class
+            val statIncrease = character.jobClass.statPriorities
+
+            val newStats = character.stats.copy(
+                strength = character.stats.strength + if (statIncrease.contains("STR")) 2 else 1,
+                intelligence = character.stats.intelligence + if (statIncrease.contains("INT")) 2 else 1,
+                agility = character.stats.agility + if (statIncrease.contains("AGI")) 2 else 1,
+                luck = character.stats.luck + if (statIncrease.contains("LUK")) 2 else 1,
+                charisma = character.stats.charisma + if (statIncrease.contains("CHA")) 2 else 1,
+                vitality = character.stats.vitality + if (statIncrease.contains("VIT")) 2 else 1
+            )
+
+            val leveledUpCharacter = character.copy(
+                level = character.level + 1,
+                experience = 0, // Reset XP
+                stats = newStats,
+                currentHp = newStats.maxHp // Full heal on level up
+            )
+
+            characterRepository.updateCharacter(leveledUpCharacter)
+
+            _uiState.update {
+                it.copy(
+                    character = leveledUpCharacter,
+                    currentAction = "LEVEL UP! Reached level ${leveledUpCharacter.level}!",
+                    showLevelUpAnimation = true
+                )
+            }
+
+            // Reset level up animation after delay
+            delay(3000)
+            _uiState.update { it.copy(showLevelUpAnimation = false) }
+        }
+    }
+
+    /**
+     * Pause the AI decision loop.
+     */
+    fun pauseAi() {
+        decisionLoopJob?.cancel()
+        _uiState.update { it.copy(currentAction = "AI Paused") }
+    }
+
+    /**
+     * Resume the AI decision loop.
+     */
+    fun resumeAi() {
+        val character = _uiState.value.character
+        if (character != null) {
+            startDecisionLoop(character)
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        decisionLoopJob?.cancel()
+    }
+}
+
+/**
+ * UI state for the Game Screen.
+ */
+data class GameUiState(
+    val character: Character? = null,
+    val activityLog: List<Activity> = emptyList(),
+    val currentAction: String = "Waiting for character...",
+    val combatLog: List<String> = emptyList(),
+    val isLoading: Boolean = true,
+    val error: String? = null,
+    val showLevelUpAnimation: Boolean = false
+)
