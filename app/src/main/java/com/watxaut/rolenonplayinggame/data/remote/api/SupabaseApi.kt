@@ -2,6 +2,8 @@ package com.watxaut.rolenonplayinggame.data.remote.api
 
 import com.watxaut.rolenonplayinggame.data.remote.dto.OfflineSimulationRequest
 import com.watxaut.rolenonplayinggame.data.remote.dto.OfflineSimulationResponse
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -16,7 +18,8 @@ import javax.inject.Singleton
 @Singleton
 class SupabaseApi @Inject constructor(
     private val httpClient: HttpClient,
-    private val supabaseConfig: SupabaseConfig
+    private val supabaseConfig: SupabaseConfig,
+    private val supabaseClient: SupabaseClient
 ) {
 
     /**
@@ -26,13 +29,20 @@ class SupabaseApi @Inject constructor(
      */
     suspend fun runOfflineSimulation(characterId: String): Result<OfflineSimulationResponse> {
         return try {
+            // Get the current user's access token
+            val accessToken = supabaseClient.auth.currentSessionOrNull()?.accessToken
+            if (accessToken == null) {
+                return Result.failure(
+                    Exception("User not authenticated. Cannot call offline simulation.")
+                )
+            }
+
             val response: HttpResponse = httpClient.post {
                 url("${supabaseConfig.url}/functions/v1/offline-simulation")
                 contentType(ContentType.Application.Json)
                 headers {
-                    append("Authorization", "Bearer ${supabaseConfig.anonKey}")
-                    // TODO: Add user auth token when available
-                    // append("Authorization", "Bearer ${userAuthToken}")
+                    // Use the authenticated user's access token
+                    append("Authorization", "Bearer $accessToken")
                 }
                 setBody(OfflineSimulationRequest(characterId))
             }
@@ -48,7 +58,7 @@ class SupabaseApi @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(
-                Exception("Offline simulation failed: ${e.message}. Note: Edge function may not be deployed yet.", e)
+                Exception("Offline simulation failed: ${e.message}", e)
             )
         }
     }
