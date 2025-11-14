@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kotlin.compose.compiler)
     alias(libs.plugins.hilt.android.plugin)
     alias(libs.plugins.ksp)
 }
@@ -47,10 +48,6 @@ android {
         compose = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
-
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -94,7 +91,7 @@ dependencies {
     // Supabase
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.realtime)
-    implementation(libs.supabase.gotrue)
+    implementation(libs.supabase.auth)
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.core)
 

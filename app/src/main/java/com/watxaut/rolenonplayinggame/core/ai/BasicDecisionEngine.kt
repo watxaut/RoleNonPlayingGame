@@ -11,9 +11,8 @@ import kotlin.random.Random
  *
  * Based on FUNCTIONAL_DESIGN_DOCUMENT.md section 3.1 (Autonomous Behavior)
  */
-class BasicDecisionEngine @Inject constructor(
+class BasicDecisionEngine @Inject constructor() {
     private val random: Random = Random.Default
-) {
 
     /**
      * Make a decision based on character state and context.

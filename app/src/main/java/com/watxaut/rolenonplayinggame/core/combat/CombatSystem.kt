@@ -155,11 +155,11 @@ class CombatSystem(
             val characterAttack = executeAttack(
                 attacker = Combatant(
                     name = character.name,
-                    strength = character.stats.strength,
-                    intelligence = character.stats.intelligence,
-                    agility = character.stats.agility,
-                    luck = character.stats.luck,
-                    vitality = character.stats.vitality
+                    strength = character.strength,
+                    intelligence = character.intelligence,
+                    agility = character.agility,
+                    luck = character.luck,
+                    vitality = character.vitality
                 ),
                 defender = Combatant(
                     name = enemy.name,
@@ -198,11 +198,11 @@ class CombatSystem(
                 ),
                 defender = Combatant(
                     name = character.name,
-                    strength = character.stats.strength,
-                    intelligence = character.stats.intelligence,
-                    agility = character.stats.agility,
-                    luck = character.stats.luck,
-                    vitality = character.stats.vitality
+                    strength = character.strength,
+                    intelligence = character.intelligence,
+                    agility = character.agility,
+                    luck = character.luck,
+                    vitality = character.vitality
                 ),
                 attackerLevel = enemy.level,
                 defenderLevel = character.level

@@ -272,11 +272,11 @@ fun CharacterStatsCard(
                 Spacer(modifier = Modifier.width(4.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "HP: ${character.currentHp} / ${character.stats.maxHp}",
+                        text = "HP: ${character.currentHp} / ${character.maxHp}",
                         style = MaterialTheme.typography.bodySmall
                     )
                     LinearProgressIndicator(
-                        progress = { character.currentHp.toFloat() / character.stats.maxHp.toFloat() },
+                        progress = { character.currentHp.toFloat() / character.maxHp.toFloat() },
                         modifier = Modifier.fillMaxWidth(),
                         color = Color.Red
                     )
@@ -318,12 +318,12 @@ fun CharacterStatsCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                StatChip("STR", character.stats.strength)
-                StatChip("INT", character.stats.intelligence)
-                StatChip("AGI", character.stats.agility)
-                StatChip("LUK", character.stats.luck)
-                StatChip("CHA", character.stats.charisma)
-                StatChip("VIT", character.stats.vitality)
+                StatChip("STR", character.strength)
+                StatChip("INT", character.intelligence)
+                StatChip("AGI", character.agility)
+                StatChip("LUK", character.luck)
+                StatChip("CHA", character.charisma)
+                StatChip("VIT", character.vitality)
             }
 
             Spacer(modifier = Modifier.height(4.dp))

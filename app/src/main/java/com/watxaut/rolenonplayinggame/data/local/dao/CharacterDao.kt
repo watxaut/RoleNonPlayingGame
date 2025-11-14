@@ -51,13 +51,13 @@ interface CharacterDao {
     @Query("UPDATE characters SET currentHp = :hp, currentLocation = :location, lastActiveAt = :timestamp WHERE id = :characterId")
     suspend fun updateCharacterState(characterId: String, hp: Int, location: String, timestamp: Long)
 
-    @Query("UPDATE characters SET level = :level, experience = :experience, strength = :str, intelligence = :int, agility = :agi, luck = :lck, charisma = :cha, vitality = :vit, maxHp = :maxHp WHERE id = :characterId")
+    @Query("UPDATE characters SET level = :level, experience = :experience, strength = :str, intelligence = :intel, agility = :agi, luck = :lck, charisma = :cha, vitality = :vit, maxHp = :maxHp WHERE id = :characterId")
     suspend fun updateCharacterStats(
         characterId: String,
         level: Int,
         experience: Long,
         str: Int,
-        int: Int,
+        intel: Int,
         agi: Int,
         lck: Int,
         cha: Int,

@@ -73,7 +73,7 @@ class ExecuteDecisionUseCase @Inject constructor(
     private fun executeCombat(character: Character, decision: Decision.Combat): DecisionOutcome {
         // Get enemy from database
         val enemy = EnemyDatabase.getEnemyForLevel(
-            level = decision.difficulty.coerceAtLeast(character.level - 2),
+            level = decision.estimatedDifficulty.coerceAtLeast(character.level - 2),
             location = character.currentLocation
         )
 
@@ -106,7 +106,7 @@ class ExecuteDecisionUseCase @Inject constructor(
             // Defeat: respawn at 50% HP, lose 10% gold
             val goldLost = (character.gold * 0.1).toInt()
             character.copy(
-                currentHp = character.stats.maxHp / 2,
+                currentHp = character.maxHp / 2,
                 gold = character.gold - goldLost,
                 currentLocation = "Willowdale Village" // Respawn in starting town
             )
@@ -181,8 +181,8 @@ class ExecuteDecisionUseCase @Inject constructor(
      * Execute rest decision (free healing over time).
      */
     private fun executeRest(character: Character, decision: Decision.Rest): DecisionOutcome {
-        val healAmount = (character.stats.maxHp * 0.3).toInt() // Heal 30%
-        val newHp = min(character.stats.maxHp, character.currentHp + healAmount)
+        val healAmount = (character.maxHp * 0.3).toInt() // Heal 30%
+        val newHp = min(character.maxHp, character.currentHp + healAmount)
 
         val updatedCharacter = character.copy(currentHp = newHp)
 
@@ -203,7 +203,7 @@ class ExecuteDecisionUseCase @Inject constructor(
      */
     private fun executeHealAtInn(character: Character, decision: Decision.HealAtInn): DecisionOutcome {
         val cost = decision.cost
-        val healAmount = character.stats.maxHp - character.currentHp
+        val healAmount = character.maxHp - character.currentHp
 
         // Check if character can afford it
         if (character.gold < cost) {
@@ -212,7 +212,7 @@ class ExecuteDecisionUseCase @Inject constructor(
         }
 
         val updatedCharacter = character.copy(
-            currentHp = character.stats.maxHp,
+            currentHp = character.maxHp,
             gold = character.gold - cost
         )
 

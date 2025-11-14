@@ -9,12 +9,12 @@ import kotlin.random.Random
  * - Roll 1 = automatic critical failure
  * - Rolls 2-20 = success/failure based on: Difficulty - Stat - Roll ≤ 0
  */
-class DiceRoller(private val random: Random = Random.Default) {
+open class DiceRoller(private val random: Random = Random.Default) {
 
     /**
      * Roll a d21 die (returns 1-21)
      */
-    fun roll(): Int = random.nextInt(1, 22)
+    open fun roll(): Int = random.nextInt(1, 22)
 
     /**
      * Roll with a specific stat and difficulty.

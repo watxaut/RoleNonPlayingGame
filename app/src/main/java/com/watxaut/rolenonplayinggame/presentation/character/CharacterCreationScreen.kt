@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -452,7 +451,7 @@ private fun StatRow(
                 onClick = { onDecrement(statType) },
                 enabled = value > 1
             ) {
-                Icon(Icons.Default.Remove, "Decrease")
+                Text("-", style = MaterialTheme.typography.headlineMedium)
             }
 
             Text(

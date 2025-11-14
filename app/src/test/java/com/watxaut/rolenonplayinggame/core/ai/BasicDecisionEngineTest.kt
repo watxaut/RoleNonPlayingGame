@@ -19,7 +19,7 @@ class BasicDecisionEngineTest {
 
     @Before
     fun setup() {
-        engine = BasicDecisionEngine(Random(42))
+        engine = BasicDecisionEngine()
 
         testCharacter = Character.create(
             userId = "test-user",

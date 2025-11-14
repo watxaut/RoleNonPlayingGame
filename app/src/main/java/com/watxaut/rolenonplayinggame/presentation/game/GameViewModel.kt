@@ -52,7 +52,7 @@ class GameViewModel @Inject constructor(
 
         viewModelScope.launch {
             // Load character from repository
-            characterRepository.getCharacter(characterId).collect { character ->
+            characterRepository.getCharacterByIdFlow(characterId).collect { character ->
                 if (character != null) {
                     _uiState.update { it.copy(character = character, isLoading = false) }
 
@@ -100,7 +100,7 @@ class GameViewModel @Inject constructor(
                     val context = buildDecisionContext(character)
 
                     // AI makes a decision
-                    val decision = decisionEngine.makeDecision(context)
+                    val decision = decisionEngine.makeDecision(character, context)
 
                     // Update UI to show decision is being executed
                     _uiState.update {
@@ -168,8 +168,8 @@ class GameViewModel @Inject constructor(
         return DecisionContext(
             currentLocation = character.currentLocation,
             currentHp = character.currentHp,
-            maxHp = character.stats.maxHp,
-            currentGold = character.gold,
+            maxHp = character.maxHp,
+            gold = character.gold,
             level = character.level,
             nearbyLocations = nearbyLocations,
             hasInnAccess = hasInn,
@@ -185,28 +185,30 @@ class GameViewModel @Inject constructor(
             // Auto-allocate stat points based on job class
             val statIncrease = character.jobClass.statPriorities
 
-            val newStats = character.stats.copy(
-                strength = character.stats.strength + if (statIncrease.contains("STR")) 2 else 1,
-                intelligence = character.stats.intelligence + if (statIncrease.contains("INT")) 2 else 1,
-                agility = character.stats.agility + if (statIncrease.contains("AGI")) 2 else 1,
-                luck = character.stats.luck + if (statIncrease.contains("LUK")) 2 else 1,
-                charisma = character.stats.charisma + if (statIncrease.contains("CHA")) 2 else 1,
-                vitality = character.stats.vitality + if (statIncrease.contains("VIT")) 2 else 1
-            )
-
             val leveledUpCharacter = character.copy(
                 level = character.level + 1,
                 experience = 0, // Reset XP
-                stats = newStats,
-                currentHp = newStats.maxHp // Full heal on level up
+                strength = character.strength + if (statIncrease.contains("STR")) 2 else 1,
+                intelligence = character.intelligence + if (statIncrease.contains("INT")) 2 else 1,
+                agility = character.agility + if (statIncrease.contains("AGI")) 2 else 1,
+                luck = character.luck + if (statIncrease.contains("LUK")) 2 else 1,
+                charisma = character.charisma + if (statIncrease.contains("CHA")) 2 else 1,
+                vitality = character.vitality + if (statIncrease.contains("VIT")) 2 else 1
             )
 
-            characterRepository.updateCharacter(leveledUpCharacter)
+            // Calculate new max HP based on new vitality and level
+            val newMaxHp = leveledUpCharacter.calculateMaxHp()
+            val fullHealCharacter = leveledUpCharacter.copy(
+                maxHp = newMaxHp,
+                currentHp = newMaxHp // Full heal on level up
+            )
+
+            characterRepository.updateCharacter(fullHealCharacter)
 
             _uiState.update {
                 it.copy(
-                    character = leveledUpCharacter,
-                    currentAction = "LEVEL UP! Reached level ${leveledUpCharacter.level}!",
+                    character = fullHealCharacter,
+                    currentAction = "LEVEL UP! Reached level ${fullHealCharacter.level}!",
                     showLevelUpAnimation = true
                 )
             }
