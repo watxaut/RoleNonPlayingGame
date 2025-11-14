@@ -94,7 +94,7 @@ private fun HeaderSection(response: OfflineSimulationResponse) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                imageVector = Icons.Default.AutoAwesome,
+                imageVector = Icons.Default.Star,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.primary
@@ -178,7 +178,7 @@ private fun StatisticsSummary(response: OfflineSimulationResponse) {
             // Experience and Gold
             if (summary.totalXpGained > 0) {
                 SummaryRow(
-                    icon = Icons.Default.TrendingUp,
+                    icon = Icons.Default.Star,
                     label = "XP Gained",
                     value = "+${summary.totalXpGained}"
                 )
@@ -186,7 +186,7 @@ private fun StatisticsSummary(response: OfflineSimulationResponse) {
 
             if (summary.totalGoldGained > 0) {
                 SummaryRow(
-                    icon = Icons.Default.MonetizationOn,
+                    icon = Icons.Default.ShoppingCart,
                     label = "Gold Earned",
                     value = "+${summary.totalGoldGained}"
                 )
@@ -195,7 +195,7 @@ private fun StatisticsSummary(response: OfflineSimulationResponse) {
             // Levels Gained
             if (summary.levelsGained > 0) {
                 SummaryRow(
-                    icon = Icons.Default.ArrowUpward,
+                    icon = Icons.Default.KeyboardArrowUp,
                     label = "Levels Gained",
                     value = "+${summary.levelsGained}",
                     highlighted = true
@@ -205,7 +205,7 @@ private fun StatisticsSummary(response: OfflineSimulationResponse) {
             // Locations and Items
             if (summary.locationsDiscovered > 0) {
                 SummaryRow(
-                    icon = Icons.Default.Explore,
+                    icon = Icons.Default.Place,
                     label = "New Locations",
                     value = summary.locationsDiscovered.toString()
                 )
@@ -344,8 +344,8 @@ private fun MajorEventCard(event: String) {
 }
 
 // Extension for the missing Swords icon
-private val Icons.Default.Swords: ImageVector
-    get() = Icons.Default.SportsMartialArts // Using martial arts as substitute
+private val Icons.Filled.Swords: ImageVector
+    get() = Icons.Filled.Menu // Using menu as substitute for swords
 
-private val Icons.Default.Inventory: ImageVector
-    get() = Icons.Default.Backpack // Using backpack as substitute
+private val Icons.Filled.Inventory: ImageVector
+    get() = Icons.Filled.List // Using list as substitute for inventory

@@ -21,6 +21,9 @@ interface CharacterDao {
     @Query("SELECT * FROM characters WHERE userId = :userId")
     suspend fun getCharactersByUserId(userId: String): List<CharacterEntity>
 
+    @Query("SELECT * FROM characters")
+    suspend fun getAllCharacters(): List<CharacterEntity>
+
     @Query("SELECT * FROM characters WHERE id = :characterId LIMIT 1")
     suspend fun getCharacterById(characterId: String): CharacterEntity?
 
