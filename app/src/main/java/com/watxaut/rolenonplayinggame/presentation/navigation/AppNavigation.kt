@@ -7,7 +7,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -24,7 +23,6 @@ import com.watxaut.rolenonplayinggame.presentation.character.CharacterCreationSc
 import com.watxaut.rolenonplayinggame.presentation.components.AppNavBar
 import com.watxaut.rolenonplayinggame.presentation.game.GameScreen
 import com.watxaut.rolenonplayinggame.presentation.home.HomeScreen
-import kotlinx.coroutines.launch
 
 /**
  * Main navigation component for the app
@@ -37,17 +35,14 @@ fun AppNavigation(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val scope = rememberCoroutineScope()
 
     var isAuthenticated by remember { mutableStateOf(false) }
     var isCheckingAuth by remember { mutableStateOf(true) }
 
     // Check authentication status
     LaunchedEffect(Unit) {
-        scope.launch {
-            isAuthenticated = authRepository.isAuthenticated() && !authRepository.isAnonymous()
-            isCheckingAuth = false
-        }
+        isAuthenticated = authRepository.isAuthenticated() && !authRepository.isAnonymous()
+        isCheckingAuth = false
     }
 
     // Determine if navbar should be shown
@@ -88,13 +83,8 @@ fun AppNavigation(
                 composable(Screen.Home.route) {
                     HomeScreen(
                         onNavigateToCharacterCreation = {
-                            scope.launch {
-                                if (authRepository.isAuthenticated() && !authRepository.isAnonymous()) {
-                                    navController.navigate(Screen.CharacterCreation.route)
-                                } else {
-                                    navController.navigate(Screen.Login.route)
-                                }
-                            }
+                            // User is already authenticated if they're on this screen
+                            navController.navigate(Screen.CharacterCreation.route)
                         },
                         onNavigateToGame = { characterId ->
                             navController.navigate(Screen.Game.createRoute(characterId))
