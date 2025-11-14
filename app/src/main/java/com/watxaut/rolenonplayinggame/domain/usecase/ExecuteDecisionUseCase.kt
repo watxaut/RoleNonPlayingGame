@@ -1,7 +1,9 @@
 package com.watxaut.rolenonplayinggame.domain.usecase
 
 import com.watxaut.rolenonplayinggame.core.ai.Decision
+import com.watxaut.rolenonplayinggame.core.combat.CombatOutcome
 import com.watxaut.rolenonplayinggame.core.combat.CombatSystem
+import com.watxaut.rolenonplayinggame.core.messages.MessageProvider
 import com.watxaut.rolenonplayinggame.data.EnemyDatabase
 import com.watxaut.rolenonplayinggame.domain.model.Activity
 import com.watxaut.rolenonplayinggame.domain.model.ActivityRewards
@@ -29,7 +31,8 @@ import kotlin.math.min
 class ExecuteDecisionUseCase @Inject constructor(
     private val characterRepository: CharacterRepository,
     private val activityRepository: ActivityRepository,
-    private val combatSystem: CombatSystem
+    private val combatSystem: CombatSystem,
+    private val messageProvider: MessageProvider
 ) {
 
     /**
@@ -69,7 +72,7 @@ class ExecuteDecisionUseCase @Inject constructor(
     }
 
     /**
-     * Execute combat decision.
+     * Execute combat decision using simplified combat system.
      */
     private fun executeCombat(character: Character, decision: Decision.Combat): DecisionOutcome {
         // Get enemy from database
@@ -78,73 +81,74 @@ class ExecuteDecisionUseCase @Inject constructor(
             location = character.currentLocation
         )
 
-        // Execute combat encounter
-        val combatResult = combatSystem.executeEncounter(character, enemy)
+        // Execute simplified combat (single d21 roll)
+        val combatResult = combatSystem.executeSimplifiedCombat(character, enemy)
 
-        // Build summary for list view
-        val summary = buildString {
-            appendLine("Combat: ${character.name} vs ${enemy.name}")
-            appendLine("Result: ${if (combatResult.victory) "Victory" else "Defeat"}")
-            appendLine()
-            combatResult.combatLog.take(3).forEach { appendLine(it) }
-            if (combatResult.combatLog.size > 3) {
-                appendLine("... Tap to see ${combatResult.combatLog.size - 3} more lines")
+        // Update character state based on combat outcome
+        val updatedCharacter = when (combatResult.outcome) {
+            CombatOutcome.WIN -> {
+                // Victory: gain rewards
+                character.copy(
+                    experience = character.experience + (combatResult.rewards?.experience ?: 0),
+                    gold = character.gold + (combatResult.rewards?.gold ?: 0)
+                )
+            }
+            CombatOutcome.FLEE -> {
+                // Fled successfully: no rewards, no penalties
+                character
+            }
+            CombatOutcome.DEATH -> {
+                // Death: respawn at 50% HP, lose gold
+                character.copy(
+                    currentHp = character.maxHp / 2,
+                    gold = character.gold - combatResult.goldLost,
+                    currentLocation = "Havenmoor" // Respawn in starting town
+                )
             }
         }
 
-        // Build full description for expanded view
-        val fullDescription = buildString {
-            appendLine("Combat: ${character.name} vs ${enemy.name}")
-            appendLine("Result: ${if (combatResult.victory) "Victory" else "Defeat"}")
-            appendLine()
-            combatResult.combatLog.forEach { appendLine(it) }
-        }
-
-        // Update character state based on combat result
-        val updatedCharacter = if (combatResult.victory) {
-            // Victory: gain rewards, update HP
-            val newExp = character.experience + (combatResult.rewards?.experience ?: 0)
-            val newGold = character.gold + (combatResult.rewards?.gold ?: 0)
-
-            character.copy(
-                currentHp = combatResult.characterFinalHp,
-                experience = newExp,
-                gold = newGold
-            )
-        } else {
-            // Defeat: respawn at 50% HP, lose 10% gold
-            val goldLost = (character.gold * 0.1).toInt()
-            character.copy(
-                currentHp = character.maxHp / 2,
-                gold = character.gold - goldLost,
-                currentLocation = "Willowdale Village" // Respawn in starting town
-            )
+        // Build activity description with the fun message from MessageProvider
+        val description = buildString {
+            appendLine(combatResult.description)
+            when (combatResult.outcome) {
+                CombatOutcome.WIN -> {
+                    combatResult.rewards?.let {
+                        appendLine("Gained ${it.experience} XP and ${it.gold} gold!")
+                    }
+                }
+                CombatOutcome.DEATH -> {
+                    appendLine("Lost ${combatResult.goldLost} gold and respawned in Havenmoor.")
+                }
+                CombatOutcome.FLEE -> {
+                    appendLine("Escaped without rewards or penalties.")
+                }
+            }
         }
 
         val activity = Activity(
             characterId = character.id,
             timestamp = Instant.now(),
             type = ActivityType.COMBAT,
-            description = summary.trim(),
-            isMajorEvent = !combatResult.victory || combatResult.totalRounds >= 10,
-            rewards = if (combatResult.victory) {
+            description = description.trim(),
+            isMajorEvent = combatResult.outcome == CombatOutcome.DEATH || combatResult.roll == 21,
+            rewards = combatResult.rewards?.let {
                 ActivityRewards(
-                    experience = combatResult.rewards?.experience ?: 0,
-                    gold = combatResult.rewards?.gold ?: 0
+                    experience = it.experience,
+                    gold = it.gold
                 )
-            } else null,
+            },
             metadata = mapOf(
                 "enemy" to enemy.name,
-                "victory" to combatResult.victory.toString(),
-                "rounds" to combatResult.totalRounds.toString(),
-                "fullDescription" to fullDescription
+                "outcome" to combatResult.outcome.toString(),
+                "roll" to combatResult.roll.toString(),
+                "combatScore" to combatResult.combatScore.toString()
             )
         )
 
         return DecisionOutcome(
             updatedCharacter = updatedCharacter,
             activity = activity,
-            combatLog = combatResult.combatLog
+            combatLog = listOf(combatResult.description)
         )
     }
 
@@ -153,21 +157,49 @@ class ExecuteDecisionUseCase @Inject constructor(
      */
     private fun executeExplore(character: Character, decision: Decision.Explore): DecisionOutcome {
         val targetLocation = decision.targetLocation
-
-        // Chance of discovery (30%)
-        val discovered = Math.random() < 0.3
         val locationName = getLocationDisplayName(targetLocation)
-        val description = if (discovered) {
-            "Explored $locationName and made an interesting discovery!"
-        } else {
-            "Explored $locationName but found nothing of note."
+
+        // Determine loot quality based on random roll
+        val lootRoll = Math.random()
+        val (lootMessage, rewards, isMajorEvent) = when {
+            lootRoll < 0.05 -> {
+                // 5% - Excellent loot
+                val gold = (50..100).random()
+                Triple(
+                    messageProvider.getLootExcellentMessage(character.name, gold),
+                    ActivityRewards(experience = 50, gold = gold),
+                    true
+                )
+            }
+            lootRoll < 0.25 -> {
+                // 20% - Good loot
+                val gold = (20..40).random()
+                Triple(
+                    messageProvider.getLootGoodMessage(character.name, gold),
+                    ActivityRewards(experience = 25, gold = gold),
+                    false
+                )
+            }
+            lootRoll < 0.60 -> {
+                // 35% - Poor loot
+                val gold = (5..15).random()
+                Triple(
+                    messageProvider.getLootPoorMessage(character.name, gold),
+                    ActivityRewards(experience = 10, gold = gold),
+                    false
+                )
+            }
+            else -> {
+                // 40% - Nothing
+                Triple(
+                    messageProvider.getLootNothingMessage(character.name),
+                    ActivityRewards(experience = 5),
+                    false
+                )
+            }
         }
 
-        val rewards = if (discovered) {
-            ActivityRewards(experience = 25, gold = 10)
-        } else {
-            ActivityRewards(experience = 5)
-        }
+        val description = "$lootMessage while exploring $locationName."
 
         val updatedCharacter = character.copy(
             currentLocation = targetLocation,
@@ -180,7 +212,7 @@ class ExecuteDecisionUseCase @Inject constructor(
             timestamp = Instant.now(),
             type = ActivityType.EXPLORATION,
             description = description,
-            isMajorEvent = discovered,
+            isMajorEvent = isMajorEvent,
             rewards = rewards,
             metadata = mapOf("location" to targetLocation)
         )
@@ -194,14 +226,24 @@ class ExecuteDecisionUseCase @Inject constructor(
     private fun executeRest(character: Character, decision: Decision.Rest): DecisionOutcome {
         val healAmount = (character.maxHp * 0.3).toInt() // Heal 30%
         val newHp = min(character.maxHp, character.currentHp + healAmount)
+        val isFullRecovery = newHp == character.maxHp
 
         val updatedCharacter = character.copy(currentHp = newHp)
+
+        // Get a fun rest message from MessageProvider
+        val restMessage = if (isFullRecovery) {
+            messageProvider.getRestFullMessage(character.name, healAmount)
+        } else {
+            messageProvider.getRestPartialMessage(character.name, healAmount)
+        }
+
+        val description = "$restMessage at ${getLocationDisplayName(decision.location)}."
 
         val activity = Activity(
             characterId = character.id,
             timestamp = Instant.now(),
             type = ActivityType.REST,
-            description = "Rested at ${getLocationDisplayName(decision.location)} and recovered $healAmount HP.",
+            description = description,
             isMajorEvent = false,
             metadata = mapOf("location" to decision.location, "healed" to healAmount.toString())
         )
@@ -227,11 +269,15 @@ class ExecuteDecisionUseCase @Inject constructor(
             gold = character.gold - cost
         )
 
+        // Get a fun rest message (always full recovery at inn)
+        val restMessage = messageProvider.getRestFullMessage(character.name, healAmount)
+        val description = "$restMessage at the inn in ${getLocationDisplayName(decision.location)} (Cost: $cost gold)."
+
         val activity = Activity(
             characterId = character.id,
             timestamp = Instant.now(),
             type = ActivityType.REST,
-            description = "Stayed at inn in ${getLocationDisplayName(decision.location)} and fully recovered ($healAmount HP) for $cost gold.",
+            description = description,
             isMajorEvent = false,
             metadata = mapOf(
                 "location" to decision.location,

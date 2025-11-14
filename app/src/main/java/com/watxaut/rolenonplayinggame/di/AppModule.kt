@@ -2,6 +2,7 @@ package com.watxaut.rolenonplayinggame.di
 
 import com.watxaut.rolenonplayinggame.core.combat.CombatSystem
 import com.watxaut.rolenonplayinggame.core.dice.DiceRoller
+import com.watxaut.rolenonplayinggame.core.messages.MessageProvider
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -26,8 +27,17 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideCombatSystem(diceRoller: DiceRoller): CombatSystem {
-        return CombatSystem(diceRoller)
+    fun provideMessageProvider(): MessageProvider {
+        return MessageProvider()
+    }
+
+    @Provides
+    @Singleton
+    fun provideCombatSystem(
+        diceRoller: DiceRoller,
+        messageProvider: MessageProvider
+    ): CombatSystem {
+        return CombatSystem(diceRoller, messageProvider)
     }
 
     @Provides
