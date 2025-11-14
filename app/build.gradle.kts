@@ -7,6 +7,16 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// Load local.properties
+import java.util.Properties
+import java.io.FileInputStream
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    FileInputStream(localPropertiesFile).use { localProperties.load(it) }
+}
+
 android {
     namespace = "com.watxaut.rolenonplayinggame"
     compileSdk = 36
@@ -23,6 +33,10 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Supabase configuration from local.properties
+        buildConfigField("String", "SUPABASE_URL", "\"${localProperties.getProperty("supabase.url", "")}\"")
+        buildConfigField("String", "SUPABASE_KEY", "\"${localProperties.getProperty("supabase.key", "")}\"")
     }
 
     buildTypes {
@@ -46,6 +60,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
