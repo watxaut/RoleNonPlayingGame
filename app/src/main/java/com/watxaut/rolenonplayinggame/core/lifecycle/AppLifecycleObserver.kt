@@ -47,9 +47,7 @@ class AppLifecycleObserver @Inject constructor(
      * Stores the current timestamp for the logged-in user
      */
     private fun onAppBackgrounded() {
-        scope.launch {
-            offlineSimulationManager.recordAppBackgrounded()
-        }
+        offlineSimulationManager.recordAppBackgrounded()
     }
 
     /**

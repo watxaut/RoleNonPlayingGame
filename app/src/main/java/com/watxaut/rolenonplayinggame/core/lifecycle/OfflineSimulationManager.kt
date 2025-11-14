@@ -37,13 +37,41 @@ class OfflineSimulationManager @Inject constructor(
     val simulationState: StateFlow<OfflineSimulationState> = _simulationState.asStateFlow()
 
     /**
-     * Get user-specific preference key
+     * Get cached user ID from preferences
+     * This is more reliable than checking auth session on app foreground
      */
-    private suspend fun getUserPrefKey(): String? {
+    private fun getCachedUserId(): String? {
+        return prefs.getString(PREF_CACHED_USER_ID, null)
+    }
+
+    /**
+     * Cache the current user ID for offline simulation tracking
+     */
+    suspend fun cacheCurrentUserId() {
         val userId = authRepository.getCurrentUserId()
+        if (userId != null) {
+            prefs.edit().putString(PREF_CACHED_USER_ID, userId).apply()
+            Log.d(TAG, "Cached user ID: $userId")
+        }
+    }
+
+    /**
+     * Clear cached user ID (call on logout)
+     */
+    fun clearCachedUserId() {
+        prefs.edit().remove(PREF_CACHED_USER_ID).apply()
+        Log.d(TAG, "Cleared cached user ID")
+    }
+
+    /**
+     * Get user-specific preference key using cached user ID
+     */
+    private fun getUserPrefKey(): String? {
+        val userId = getCachedUserId()
         return if (userId != null) {
             "${PREF_LAST_ACTIVE}_$userId"
         } else {
+            Log.d(TAG, "No cached user ID found")
             null
         }
     }
@@ -52,16 +80,16 @@ class OfflineSimulationManager @Inject constructor(
      * Record when the app goes to background
      * This is the ONLY place we set the timestamp
      */
-    suspend fun recordAppBackgrounded() {
+    fun recordAppBackgrounded() {
         val prefKey = getUserPrefKey()
         if (prefKey == null) {
-            Log.d(TAG, "No user logged in, skipping background recording")
+            Log.d(TAG, "No cached user ID, skipping background recording")
             return
         }
 
         val timestamp = System.currentTimeMillis()
         prefs.edit().putLong(prefKey, timestamp).apply()
-        Log.d(TAG, "App backgrounded at $timestamp for user $prefKey")
+        Log.d(TAG, "App backgrounded at $timestamp for $prefKey")
     }
 
     /**
@@ -181,6 +209,7 @@ class OfflineSimulationManager @Inject constructor(
     companion object {
         private const val TAG = "OfflineSimulationManager"
         private const val PREF_LAST_ACTIVE = "last_active_timestamp"
+        private const val PREF_CACHED_USER_ID = "cached_user_id"
     }
 }
 
