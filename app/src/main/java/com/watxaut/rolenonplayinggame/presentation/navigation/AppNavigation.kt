@@ -23,6 +23,8 @@ import com.watxaut.rolenonplayinggame.presentation.character.CharacterCreationSc
 import com.watxaut.rolenonplayinggame.presentation.components.AppNavBar
 import com.watxaut.rolenonplayinggame.presentation.game.GameScreen
 import com.watxaut.rolenonplayinggame.presentation.home.HomeScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Main navigation component for the app
@@ -39,10 +41,15 @@ fun AppNavigation(
     var isAuthenticated by remember { mutableStateOf(false) }
     var isCheckingAuth by remember { mutableStateOf(true) }
 
-    // Check authentication status
+    // Check authentication status on background thread to prevent ANR
     LaunchedEffect(Unit) {
-        isAuthenticated = authRepository.isAuthenticated() && !authRepository.isAnonymous()
-        isCheckingAuth = false
+        withContext(Dispatchers.IO) {
+            val authenticated = authRepository.isAuthenticated() && !authRepository.isAnonymous()
+            withContext(Dispatchers.Main) {
+                isAuthenticated = authenticated
+                isCheckingAuth = false
+            }
+        }
     }
 
     // Determine if navbar should be shown
