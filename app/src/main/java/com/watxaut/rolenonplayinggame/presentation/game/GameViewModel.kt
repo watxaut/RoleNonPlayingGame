@@ -226,10 +226,13 @@ class GameViewModel @Inject constructor(
     }
 
     /**
-     * Pause the AI decision loop.
+     * Pause the AI decision loop and all observers.
+     * Called when navigating away from the GameScreen.
      */
     fun pauseAi() {
         decisionLoopJob?.cancel()
+        characterObserverJob?.cancel()
+        activityObserverJob?.cancel()
         _uiState.update { it.copy(currentAction = "AI Paused") }
     }
 

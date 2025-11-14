@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -89,6 +90,13 @@ fun GameScreen(
     // Load character when screen opens
     LaunchedEffect(characterId) {
         viewModel.loadCharacter(characterId)
+    }
+
+    // Pause AI when screen is disposed (navigating away)
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.pauseAi()
+        }
     }
 
     Scaffold(
