@@ -89,15 +89,3 @@ enum class EquipmentSlot(val displayName: String) {
     AMULET("Amulet"),
     TRINKET("Trinket")
 }
-
-/**
- * Stat types for referencing stats
- */
-enum class StatType {
-    STRENGTH,
-    INTELLIGENCE,
-    AGILITY,
-    LUCK,
-    CHARISMA,
-    VITALITY
-}
