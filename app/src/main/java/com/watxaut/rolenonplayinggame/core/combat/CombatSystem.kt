@@ -280,12 +280,15 @@ class CombatSystem(
     ): SimplifiedCombatResult {
         val roll = diceRoller.roll()
 
+        // Get character's total stats including equipment bonuses
+        val totalStats = character.getTotalStats()
+
         // Calculate power levels
         val characterPower = calculatePower(
-            strength = character.strength,
-            intelligence = character.intelligence,
-            agility = character.agility,
-            vitality = character.vitality,
+            strength = totalStats.strength,
+            intelligence = totalStats.intelligence,
+            agility = totalStats.agility,
+            vitality = totalStats.vitality,
             level = character.level
         )
 
@@ -309,20 +312,25 @@ class CombatSystem(
             else -> CombatOutcome.DEATH
         }
 
-        // Calculate rewards for wins
-        val rewards = if (outcome == CombatOutcome.WIN) {
+        // Calculate rewards and item drops for wins
+        val (rewards, droppedEquipment) = if (outcome == CombatOutcome.WIN) {
             val baseXp = calculateExperienceReward(enemy.level, character.level)
             val baseGold = calculateGoldReward(enemy.level)
 
             // Bonus rewards on critical success (roll 21)
             val bonusMultiplier = if (roll == 21) 1.5 else 1.0
 
-            CombatRewards(
+            val combatRewards = CombatRewards(
                 experience = (baseXp * bonusMultiplier).toInt(),
                 gold = (baseGold * bonusMultiplier).toInt()
             )
+
+            // Check for equipment drop (using EquipmentDatabase)
+            val droppedItem = com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getRandomDrop()
+
+            Pair(combatRewards, droppedItem)
         } else {
-            null
+            Pair(null, null)
         }
 
         // Calculate gold penalty for death
@@ -350,7 +358,8 @@ class CombatSystem(
             enemyPower = enemyPower,
             rewards = rewards,
             goldLost = goldLost,
-            description = description
+            description = description,
+            droppedEquipment = droppedEquipment
         )
     }
 
@@ -568,5 +577,6 @@ data class SimplifiedCombatResult(
     val enemyPower: Double,
     val rewards: CombatRewards?,
     val goldLost: Int,
-    val description: String
+    val description: String,
+    val droppedEquipment: com.watxaut.rolenonplayinggame.domain.model.Equipment? = null
 )

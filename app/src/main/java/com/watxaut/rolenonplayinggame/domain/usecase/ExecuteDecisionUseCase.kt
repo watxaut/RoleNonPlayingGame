@@ -85,7 +85,7 @@ class ExecuteDecisionUseCase @Inject constructor(
         val combatResult = combatSystem.executeSimplifiedCombat(character, enemy)
 
         // Update character state based on combat outcome
-        val updatedCharacter = when (combatResult.outcome) {
+        var updatedCharacter = when (combatResult.outcome) {
             CombatOutcome.WIN -> {
                 // Victory: gain rewards
                 character.copy(
@@ -107,6 +107,17 @@ class ExecuteDecisionUseCase @Inject constructor(
             }
         }
 
+        // Handle equipment drop - auto-equip if better
+        combatResult.droppedEquipment?.let { droppedItem ->
+            val currentEquipped = updatedCharacter.equipment.getEquipped(droppedItem.slot)
+            if (droppedItem.isBetterThan(currentEquipped, updatedCharacter)) {
+                // Auto-equip the better item
+                updatedCharacter = updatedCharacter.copy(
+                    equipment = updatedCharacter.equipment.equip(droppedItem)
+                )
+            }
+        }
+
         // Build activity description with the fun message from MessageProvider
         val description = buildString {
             appendLine(combatResult.description)
@@ -114,6 +125,14 @@ class ExecuteDecisionUseCase @Inject constructor(
                 CombatOutcome.WIN -> {
                     combatResult.rewards?.let {
                         appendLine("Gained ${it.experience} XP and ${it.gold} gold!")
+                    }
+                    combatResult.droppedEquipment?.let { item ->
+                        val currentEquipped = character.equipment.getEquipped(item.slot)
+                        if (item.isBetterThan(currentEquipped, character)) {
+                            appendLine("Found ${item.name} and equipped it! (+${item.getTotalStatBonus()} total stats)")
+                        } else {
+                            appendLine("Found ${item.name} but current equipment is better.")
+                        }
                     }
                 }
                 CombatOutcome.DEATH -> {
@@ -154,16 +173,49 @@ class ExecuteDecisionUseCase @Inject constructor(
 
     /**
      * Execute exploration decision.
+     * Balanced: ~70% chance of just visiting, ~30% chance of loot (2:1 ratio with combat)
      */
     private fun executeExplore(character: Character, decision: Decision.Explore): DecisionOutcome {
         val targetLocation = decision.targetLocation
         val locationName = getLocationDisplayName(targetLocation)
 
-        // Determine loot quality based on random roll
+        // Determine if this is a simple visit or loot exploration
+        val actionRoll = Math.random()
+
+        if (actionRoll < 0.70) {
+            // 70% - Just visiting/sightseeing (no rewards)
+            val visitMessages = listOf(
+                "${character.name} visits $locationName and takes in the sights.",
+                "${character.name} strolls through $locationName, enjoying the atmosphere.",
+                "${character.name} explores $locationName, admiring the scenery.",
+                "${character.name} wanders around $locationName, observing the locals.",
+                "${character.name} passes through $locationName without incident.",
+                "${character.name} relaxes in $locationName for a while.",
+                "${character.name} explores the streets of $locationName.",
+                "${character.name} visits the local landmarks in $locationName."
+            )
+
+            val description = visitMessages.random()
+
+            val updatedCharacter = character.copy(currentLocation = targetLocation)
+
+            val activity = Activity(
+                characterId = character.id,
+                timestamp = Instant.now(),
+                type = ActivityType.EXPLORATION,
+                description = description,
+                isMajorEvent = false,
+                metadata = mapOf("location" to targetLocation, "action" to "visit")
+            )
+
+            return DecisionOutcome(updatedCharacter, activity)
+        }
+
+        // 30% - Loot exploration (find items/gold)
         val lootRoll = Math.random()
         val (lootMessage, rewards, isMajorEvent) = when {
             lootRoll < 0.05 -> {
-                // 5% - Excellent loot
+                // 1.5% total (5% of 30%) - Excellent loot
                 val gold = (50..100).random()
                 Triple(
                     messageProvider.getLootExcellentMessage(character.name, gold),
@@ -171,8 +223,8 @@ class ExecuteDecisionUseCase @Inject constructor(
                     true
                 )
             }
-            lootRoll < 0.25 -> {
-                // 20% - Good loot
+            lootRoll < 0.20 -> {
+                // 6% total (20% of 30%) - Good loot
                 val gold = (20..40).random()
                 Triple(
                     messageProvider.getLootGoodMessage(character.name, gold),
@@ -181,7 +233,7 @@ class ExecuteDecisionUseCase @Inject constructor(
                 )
             }
             lootRoll < 0.60 -> {
-                // 35% - Poor loot
+                // 18% total (60% of 30%) - Poor loot
                 val gold = (5..15).random()
                 Triple(
                     messageProvider.getLootPoorMessage(character.name, gold),
@@ -190,7 +242,7 @@ class ExecuteDecisionUseCase @Inject constructor(
                 )
             }
             else -> {
-                // 40% - Nothing
+                // 4.5% total (40% of 30%) - Nothing found
                 Triple(
                     messageProvider.getLootNothingMessage(character.name),
                     ActivityRewards(experience = 5),
@@ -199,7 +251,7 @@ class ExecuteDecisionUseCase @Inject constructor(
             }
         }
 
-        val description = "$lootMessage while exploring $locationName."
+        val description = "$lootMessage (Exploring $locationName)"
 
         val updatedCharacter = character.copy(
             currentLocation = targetLocation,
@@ -214,7 +266,7 @@ class ExecuteDecisionUseCase @Inject constructor(
             description = description,
             isMajorEvent = isMajorEvent,
             rewards = rewards,
-            metadata = mapOf("location" to targetLocation)
+            metadata = mapOf("location" to targetLocation, "action" to "loot")
         )
 
         return DecisionOutcome(updatedCharacter, activity)

@@ -168,6 +168,11 @@ fun GameScreen(
                         Tab(
                             selected = selectedTabIndex == 1,
                             onClick = { selectedTabIndex = 1 },
+                            text = { Text("Equipment") }
+                        )
+                        Tab(
+                            selected = selectedTabIndex == 2,
+                            onClick = { selectedTabIndex = 2 },
                             text = { Text("Activity Log") }
                         )
                     }
@@ -182,7 +187,13 @@ fun GameScreen(
                                 .fillMaxSize()
                                 .padding(16.dp)
                         )
-                        1 -> ActivityLogTab(
+                        1 -> EquipmentTab(
+                            character = uiState.character!!,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                        )
+                        2 -> ActivityLogTab(
                             activities = uiState.activityLog,
                             onActivityClick = { activity ->
                                 selectedActivity = activity
@@ -465,6 +476,259 @@ fun StatChip(statName: String, value: Int, modifier: Modifier = Modifier) {
             text = "$statName: $value",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+    }
+}
+
+/**
+ * Equipment tab showing all equipped items with fun descriptions.
+ */
+@Composable
+fun EquipmentTab(
+    character: Character,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(modifier = modifier) {
+        // Header with total bonuses
+        item {
+            val totalBonuses = character.equipment.getTotalBonuses()
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Equipment Bonuses",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            BonusStat("STR", totalBonuses.strength)
+                            BonusStat("INT", totalBonuses.intelligence)
+                            BonusStat("AGI", totalBonuses.agility)
+                        }
+                        Column {
+                            BonusStat("VIT", totalBonuses.vitality)
+                            BonusStat("LUK", totalBonuses.luck)
+                            BonusStat("CHA", totalBonuses.charisma)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Main Weapon
+        item {
+            EquipmentSlotCard(
+                slotName = "Main Weapon",
+                equipment = character.equipment.weaponMain
+            )
+        }
+
+        // Off-hand Weapon
+        item {
+            EquipmentSlotCard(
+                slotName = "Off-hand Weapon",
+                equipment = character.equipment.weaponOff
+            )
+        }
+
+        // Armor
+        item {
+            EquipmentSlotCard(
+                slotName = "Armor",
+                equipment = character.equipment.armor
+            )
+        }
+
+        // Gloves
+        item {
+            EquipmentSlotCard(
+                slotName = "Gloves",
+                equipment = character.equipment.gloves
+            )
+        }
+
+        // Head Armor
+        item {
+            EquipmentSlotCard(
+                slotName = "Head Armor",
+                equipment = character.equipment.head
+            )
+        }
+
+        // Accessory
+        item {
+            EquipmentSlotCard(
+                slotName = "Accessory",
+                equipment = character.equipment.accessory
+            )
+        }
+    }
+}
+
+/**
+ * Display a stat bonus
+ */
+@Composable
+fun BonusStat(statName: String, bonus: Int) {
+    if (bonus > 0) {
+        Text(
+            text = "$statName: +$bonus",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF4CAF50) // Green for bonuses
+        )
+    }
+}
+
+/**
+ * Card displaying an equipment slot and its item
+ */
+@Composable
+fun EquipmentSlotCard(
+    slotName: String,
+    equipment: com.watxaut.rolenonplayinggame.domain.model.Equipment?,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (equipment != null) {
+                if (equipment.rarity == com.watxaut.rolenonplayinggame.domain.model.Rarity.RARE) {
+                    Color(0xFFFFD700).copy(alpha = 0.1f) // Gold tint for rare
+                } else {
+                    MaterialTheme.colorScheme.surface
+                }
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            }
+        ),
+        elevation = CardDefaults.cardDefaults().elevation
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Slot name
+            Text(
+                text = slotName,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (equipment != null) {
+                // Equipment name with rarity
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = equipment.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (equipment.rarity == com.watxaut.rolenonplayinggame.domain.model.Rarity.RARE) {
+                            Color(0xFFFFD700) // Gold for rare
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = equipment.rarity.displayName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (equipment.rarity == com.watxaut.rolenonplayinggame.domain.model.Rarity.RARE) {
+                            Color(0xFFFFD700)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Description (fun flavor text!)
+                Text(
+                    text = equipment.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Stats
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (equipment.strengthBonus > 0) {
+                        StatBonus("STR", equipment.strengthBonus)
+                    }
+                    if (equipment.intelligenceBonus > 0) {
+                        StatBonus("INT", equipment.intelligenceBonus)
+                    }
+                    if (equipment.agilityBonus > 0) {
+                        StatBonus("AGI", equipment.agilityBonus)
+                    }
+                    if (equipment.vitalityBonus > 0) {
+                        StatBonus("VIT", equipment.vitalityBonus)
+                    }
+                    if (equipment.luckBonus > 0) {
+                        StatBonus("LUK", equipment.luckBonus)
+                    }
+                    if (equipment.charismaBonus > 0) {
+                        StatBonus("CHA", equipment.charismaBonus)
+                    }
+                }
+
+                // Total stats
+                Text(
+                    text = "Total: +${equipment.getTotalStatBonus()} stats",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF4CAF50),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            } else {
+                // Empty slot
+                Text(
+                    text = "No equipment",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Display a single stat bonus chip
+ */
+@Composable
+fun StatBonus(statName: String, bonus: Int) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF4CAF50).copy(alpha = 0.2f)
+        )
+    ) {
+        Text(
+            text = "$statName +$bonus",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF2E7D32),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         )
     }
 }
