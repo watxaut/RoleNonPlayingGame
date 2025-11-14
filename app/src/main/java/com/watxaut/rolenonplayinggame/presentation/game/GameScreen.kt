@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -91,12 +92,23 @@ fun GameScreen(
         viewModel.loadCharacter(characterId)
     }
 
+    // Pause AI when screen is disposed (navigating away)
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.pauseAi()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Observing ${uiState.character?.name ?: "Character"}") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        // Pause AI BEFORE navigating to prevent database conflicts
+                        viewModel.pauseAi()
+                        onNavigateBack()
+                    }) {
                         Icon(Icons.Default.ArrowBack, "Back")
                     }
                 },

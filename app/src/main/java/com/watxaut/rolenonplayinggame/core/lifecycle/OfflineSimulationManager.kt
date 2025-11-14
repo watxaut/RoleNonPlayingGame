@@ -88,11 +88,10 @@ class OfflineSimulationManager @Inject constructor(
 
         try {
             // Ensure user is authenticated before calling the simulation
-            val authResult = authRepository.signInAnonymously()
-            if (authResult.isFailure) {
-                Log.e(TAG, "Failed to authenticate user for offline simulation", authResult.exceptionOrNull())
+            if (!authRepository.isAuthenticated()) {
+                Log.e(TAG, "User not authenticated for offline simulation")
                 _simulationState.value = OfflineSimulationState.Error(
-                    "Authentication failed: ${authResult.exceptionOrNull()?.message}"
+                    "You must be logged in to use offline simulation"
                 )
                 return
             }
