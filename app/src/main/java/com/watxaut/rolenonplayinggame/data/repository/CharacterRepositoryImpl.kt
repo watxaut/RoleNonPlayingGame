@@ -76,10 +76,10 @@ class CharacterRepositoryImpl @Inject constructor(
                     "personality_impulsive" to character.personalityTraits.impulsive,
                     "job_class" to character.jobClass.name,
                     "gold" to character.gold,
-                    "inventory" to character.inventory,
-                    "equipped_items" to character.equippedItems,
-                    "discovered_locations" to character.discoveredLocations,
-                    "active_quests" to character.activeQuests,
+                    "inventory" to toJsonArray(character.inventory),
+                    "equipped_items" to toJsonMap(character.equippedItems),
+                    "discovered_locations" to toJsonArray(character.discoveredLocations),
+                    "active_quests" to toJsonArray(character.activeQuests),
                     "created_at" to character.createdAt.toString(),
                     "last_active_at" to character.lastActiveAt.toString()
                 )
@@ -169,5 +169,21 @@ class CharacterRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    /**
+     * Convert list to JSON array string for Supabase
+     */
+    private fun toJsonArray(list: List<String>): String {
+        if (list.isEmpty()) return "[]"
+        return list.joinToString(",", "[", "]") { "\"$it\"" }
+    }
+
+    /**
+     * Convert map to JSON object string for Supabase
+     */
+    private fun toJsonMap(map: Map<String, String>): String {
+        if (map.isEmpty()) return "{}"
+        return map.entries.joinToString(",", "{", "}") { "\"${it.key}\":\"${it.value}\"" }
     }
 }
