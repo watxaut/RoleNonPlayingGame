@@ -12,4 +12,5 @@ sealed class Screen(val route: String) {
     data object CharacterSheet : Screen("character_sheet/{characterId}") {
         fun createRoute(characterId: String) = "character_sheet/$characterId"
     }
+    data object OfflineSummary : Screen("offline_summary")
 }
