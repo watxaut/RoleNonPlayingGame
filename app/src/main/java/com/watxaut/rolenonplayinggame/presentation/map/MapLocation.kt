@@ -8,7 +8,8 @@ import com.watxaut.rolenonplayinggame.domain.model.Region
  * Contains visual positioning data separate from the domain Location model.
  */
 data class MapLocation(
-    val locationName: String,
+    val locationName: String, // Display name (e.g., "Whispering Grove")
+    val locationId: String, // Normalized ID for matching (e.g., "whispering_grove")
     val x: Float, // Normalized position 0.0 to 1.0 relative to region center
     val y: Float, // Normalized position 0.0 to 1.0 relative to region center
     val locationType: MapLocationType
@@ -38,34 +39,35 @@ enum class MapLocationType(val displayName: String) {
 fun Region.getMapLocations(): List<MapLocation> {
     return when (this) {
         Region.HEARTLANDS -> listOf(
-            MapLocation("Havenmoor", 0.5f, 0.5f, MapLocationType.TOWN),
-            MapLocation("Whispering Grove", 0.3f, 0.4f, MapLocationType.FOREST),
-            MapLocation("Broken Bridge", 0.6f, 0.6f, MapLocationType.RUINS),
-            MapLocation("Miller's Rest", 0.4f, 0.7f, MapLocationType.VILLAGE)
+            MapLocation("Havenmoor", "heartlands_havenmoor", 0.5f, 0.5f, MapLocationType.TOWN),
+            MapLocation("Whispering Grove", "heartlands_whispering_grove", 0.2f, 0.3f, MapLocationType.FOREST),
+            MapLocation("Broken Bridge", "heartlands_broken_bridge", 0.8f, 0.7f, MapLocationType.RUINS),
+            MapLocation("Miller's Rest", "heartlands_millers_rest", 0.3f, 0.8f, MapLocationType.VILLAGE),
+            MapLocation("Meadowbrook Fields", "heartlands_meadowbrook_fields", 0.6f, 0.4f, MapLocationType.LANDMARK)
         )
         Region.THORNWOOD_WILDS -> listOf(
-            MapLocation("Eldergrove Ruins", 0.2f, 0.3f, MapLocationType.RUINS),
-            MapLocation("The Webbed Hollow", 0.15f, 0.5f, MapLocationType.DUNGEON),
-            MapLocation("Moonwell Glade", 0.25f, 0.6f, MapLocationType.LANDMARK),
-            MapLocation("Thornguard Outpost", 0.3f, 0.4f, MapLocationType.OUTPOST)
+            MapLocation("Eldergrove Ruins", "thornwood_wilds_eldergrove_ruins", 0.3f, 0.2f, MapLocationType.RUINS),
+            MapLocation("The Webbed Hollow", "thornwood_wilds_webbed_hollow", 0.1f, 0.6f, MapLocationType.DUNGEON),
+            MapLocation("Moonwell Glade", "thornwood_wilds_moonwell_glade", 0.5f, 0.8f, MapLocationType.LANDMARK),
+            MapLocation("Thornguard Outpost", "thornwood_wilds_thornguard_outpost", 0.7f, 0.4f, MapLocationType.OUTPOST)
         )
         Region.ASHENVEIL_DESERT -> listOf(
-            MapLocation("Sandstone Bazaar", 0.5f, 0.8f, MapLocationType.TOWN),
-            MapLocation("The Bone Canyons", 0.4f, 0.85f, MapLocationType.DUNGEON),
-            MapLocation("Mirage Springs", 0.6f, 0.75f, MapLocationType.OASIS),
-            MapLocation("Sunscorch Ruins", 0.5f, 0.9f, MapLocationType.RUINS)
+            MapLocation("Sandstone Bazaar", "ashenveil_desert_sandstone_bazaar", 0.5f, 0.5f, MapLocationType.TOWN),
+            MapLocation("The Bone Canyons", "ashenveil_desert_bone_canyons", 0.2f, 0.8f, MapLocationType.DUNGEON),
+            MapLocation("Mirage Springs", "ashenveil_desert_mirage_springs", 0.8f, 0.3f, MapLocationType.OASIS),
+            MapLocation("Sunscorch Ruins", "ashenveil_desert_sunscorch_ruins", 0.5f, 0.9f, MapLocationType.RUINS)
         )
         Region.FROSTPEAK_MOUNTAINS -> listOf(
-            MapLocation("Irondelve Hold", 0.5f, 0.15f, MapLocationType.FORTRESS),
-            MapLocation("Crystalfall Caverns", 0.6f, 0.1f, MapLocationType.DUNGEON),
-            MapLocation("The Sky Monastery", 0.45f, 0.05f, MapLocationType.TEMPLE),
-            MapLocation("Avalanche Pass", 0.55f, 0.2f, MapLocationType.PASS)
+            MapLocation("Irondelve Hold", "frostpeak_mountains_irondelve_hold", 0.5f, 0.5f, MapLocationType.FORTRESS),
+            MapLocation("Crystalfall Caverns", "frostpeak_mountains_crystalfall_caverns", 0.8f, 0.3f, MapLocationType.DUNGEON),
+            MapLocation("The Sky Monastery", "frostpeak_mountains_sky_monastery", 0.2f, 0.2f, MapLocationType.TEMPLE),
+            MapLocation("Avalanche Pass", "frostpeak_mountains_avalanche_pass", 0.7f, 0.7f, MapLocationType.PASS)
         )
         Region.STORMCOAST_REACHES -> listOf(
-            MapLocation("Wrecker's Cove", 0.85f, 0.5f, MapLocationType.TOWN),
-            MapLocation("The Drowned Cathedral", 0.9f, 0.6f, MapLocationType.TEMPLE),
-            MapLocation("Lighthouse Point", 0.95f, 0.4f, MapLocationType.LANDMARK),
-            MapLocation("The Shattered Fleet", 0.85f, 0.7f, MapLocationType.SHIPWRECK)
+            MapLocation("Wrecker's Cove", "stormcoast_reaches_wreckers_cove", 0.5f, 0.5f, MapLocationType.TOWN),
+            MapLocation("The Drowned Cathedral", "stormcoast_reaches_drowned_cathedral", 0.8f, 0.7f, MapLocationType.TEMPLE),
+            MapLocation("Lighthouse Point", "stormcoast_reaches_lighthouse_point", 0.9f, 0.2f, MapLocationType.LANDMARK),
+            MapLocation("The Shattered Fleet", "stormcoast_reaches_shattered_fleet", 0.3f, 0.8f, MapLocationType.SHIPWRECK)
         )
     }
 }
@@ -85,13 +87,36 @@ fun Region.getMapColor(): Long {
 
 /**
  * Get region position on the isometric map
+ * Positioned to create a connected island layout
  */
 fun Region.getMapPosition(): Offset {
+    // Regions are positioned to touch each other in an island formation
     return when (this) {
-        Region.HEARTLANDS -> Offset(0f, 0f)
-        Region.THORNWOOD_WILDS -> Offset(-250f, 0f)
-        Region.FROSTPEAK_MOUNTAINS -> Offset(0f, -200f)
-        Region.ASHENVEIL_DESERT -> Offset(0f, 200f)
-        Region.STORMCOAST_REACHES -> Offset(250f, 0f)
+        Region.HEARTLANDS -> Offset(0f, 0f) // Center
+        Region.THORNWOOD_WILDS -> Offset(-150f, 0f) // West (touching Heartlands)
+        Region.FROSTPEAK_MOUNTAINS -> Offset(0f, -150f) // North (touching Heartlands)
+        Region.ASHENVEIL_DESERT -> Offset(0f, 150f) // South (touching Heartlands)
+        Region.STORMCOAST_REACHES -> Offset(150f, 0f) // East (touching Heartlands)
     }
+}
+
+/**
+ * Convert a location ID to a display name
+ * e.g., "heartlands_meadowbrook_fields" -> "Meadowbrook Fields"
+ */
+fun getLocationDisplayName(locationId: String): String {
+    // Find the location in all regions
+    Region.entries.forEach { region ->
+        region.getMapLocations().find { it.locationId == locationId }?.let {
+            return it.locationName
+        }
+    }
+
+    // Fallback: convert snake_case to Title Case
+    return locationId
+        .split("_")
+        .drop(1) // Remove region prefix
+        .joinToString(" ") { word ->
+            word.replaceFirstChar { it.uppercase() }
+        }
 }

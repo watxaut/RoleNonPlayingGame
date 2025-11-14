@@ -62,6 +62,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.watxaut.rolenonplayinggame.domain.model.Activity
 import com.watxaut.rolenonplayinggame.domain.model.ActivityType
 import com.watxaut.rolenonplayinggame.domain.model.Character
+import com.watxaut.rolenonplayinggame.presentation.map.getLocationDisplayName
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -364,7 +365,7 @@ fun CharacterStatsCard(
                     )
                 }
                 Text(
-                    text = character.currentLocation,
+                    text = getLocationDisplayName(character.currentLocation),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -731,11 +732,25 @@ fun ActivityDetailDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Description
-                Text(
-                    text = activity.description,
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                // Description - show full description from metadata if available
+                val displayDescription = activity.metadata?.get("fullDescription") as? String
+                    ?: activity.description
+
+                // Make description scrollable for long combat logs
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(400.dp)
+                ) {
+                    LazyColumn {
+                        item {
+                            Text(
+                                text = displayDescription,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 

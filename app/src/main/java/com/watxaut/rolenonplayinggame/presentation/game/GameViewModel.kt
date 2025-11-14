@@ -105,8 +105,8 @@ class GameViewModel @Inject constructor(
 
             while (true) {
                 try {
-                    // Random delay between 10-30 seconds (slower progression)
-                    val delayMs = Random.nextLong(10000, 30000)
+                    // Random delay between 2-8 seconds (faster progression)
+                    val delayMs = Random.nextLong(2000, 8000)
                     delay(delayMs)
 
                     // Build decision context

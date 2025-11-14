@@ -127,6 +127,9 @@ fun WorldMapScreen(
             // Apply transformations using DrawScope transformations
             translate(offsetX, offsetY) {
                 scale(scale, pivot = Offset(canvasWidth / 2, canvasHeight / 2)) {
+                    // Draw ocean background
+                    drawOcean(canvasWidth, canvasHeight)
+
                     // Draw the world map
                     drawIsometricWorld(
                         canvasWidth = canvasWidth,
@@ -253,7 +256,9 @@ fun WorldMapScreen(
             LocationDetailDialog(
                 region = region,
                 location = location,
-                characters = uiState.characters.filter { it.currentLocation == location.locationName },
+                characters = uiState.characters.filter {
+                    it.currentLocation.lowercase() == location.locationId.lowercase()
+                },
                 onDismiss = { selectedLocation = null }
             )
         }
@@ -306,6 +311,25 @@ private fun findLocationAt(
 }
 
 /**
+ * Draw ocean background around the island
+ */
+private fun DrawScope.drawOcean(canvasWidth: Float, canvasHeight: Float) {
+    // Draw a large ocean area
+    drawCircle(
+        color = Color(0xFF0D47A1).copy(alpha = 0.6f), // Deep ocean blue
+        radius = canvasWidth.coerceAtLeast(canvasHeight) * 0.8f,
+        center = Offset(canvasWidth / 2, canvasHeight / 2)
+    )
+
+    // Add some waves/gradient effect
+    drawCircle(
+        color = Color(0xFF1565C0).copy(alpha = 0.4f),
+        radius = canvasWidth.coerceAtLeast(canvasHeight) * 0.7f,
+        center = Offset(canvasWidth / 2, canvasHeight / 2)
+    )
+}
+
+/**
  * Draw the isometric world map
  */
 private fun DrawScope.drawIsometricWorld(
@@ -353,9 +377,10 @@ private fun DrawScope.drawRegion(
     drawIntoCanvas { canvas ->
         val paint = android.graphics.Paint().apply {
             textAlign = android.graphics.Paint.Align.CENTER
-            textSize = 14f
+            textSize = 16f
             color = android.graphics.Color.WHITE
             isFakeBoldText = true
+            setShadowLayer(4f, 0f, 0f, android.graphics.Color.BLACK)
         }
         canvas.nativeCanvas.drawText(
             region.displayName,
@@ -382,39 +407,49 @@ private fun DrawScope.drawRegion(
             center = Offset(locX, locY)
         )
 
-        // Draw location name
+        // Draw location name with shadow for better visibility
         drawIntoCanvas { canvas ->
             val paint = android.graphics.Paint().apply {
                 textAlign = android.graphics.Paint.Align.CENTER
-                textSize = 10f
+                textSize = 9f
                 color = android.graphics.Color.WHITE
+                setShadowLayer(3f, 0f, 0f, android.graphics.Color.BLACK)
             }
             canvas.nativeCanvas.drawText(
                 location.locationName,
                 locX,
-                locY + 15f,
+                locY + 18f,
                 paint
             )
         }
 
-        // Draw characters at this location
-        val charactersHere = characters.filter { it.currentLocation == location.locationName }
-        charactersHere.forEachIndexed { index, _ ->
-            val charX = locX + (index * 12f)
-            val charY = locY - 20f
+        // Draw characters at this location - match using normalized location ID
+        val charactersHere = characters.filter { character ->
+            character.currentLocation.lowercase() == location.locationId.lowercase()
+        }
 
-            // Draw character marker
-            drawCircle(
-                color = Color.Yellow,
-                radius = 5f,
-                center = Offset(charX, charY),
-                style = Stroke(width = 2f)
-            )
-            drawCircle(
-                color = Color(0xFFFFD700),
-                radius = 3f,
-                center = Offset(charX, charY)
-            )
+        if (charactersHere.isNotEmpty()) {
+            // Calculate center position for grouped heroes
+            val heroGroupX = locX
+            val heroGroupY = locY - 22f
+
+            charactersHere.forEachIndexed { index, _ ->
+                val offsetX = (index - (charactersHere.size - 1) / 2f) * 14f
+                val charX = heroGroupX + offsetX
+                val charY = heroGroupY
+
+                // Draw single hero marker with glow
+                drawCircle(
+                    color = Color(0xFFFFD700).copy(alpha = 0.4f),
+                    radius = 10f,
+                    center = Offset(charX, charY)
+                )
+                drawCircle(
+                    color = Color(0xFFFFD700),
+                    radius = 6f,
+                    center = Offset(charX, charY)
+                )
+            }
         }
     }
 }

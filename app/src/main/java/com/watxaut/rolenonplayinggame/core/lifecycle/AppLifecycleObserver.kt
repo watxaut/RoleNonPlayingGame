@@ -44,7 +44,7 @@ class AppLifecycleObserver @Inject constructor(
 
     /**
      * Called when app goes to background
-     * Stores the current timestamp
+     * Stores the current timestamp for the logged-in user
      */
     private fun onAppBackgrounded() {
         scope.launch {
@@ -54,10 +54,11 @@ class AppLifecycleObserver @Inject constructor(
 
     /**
      * Called when app comes to foreground
-     * Checks if offline simulation is needed
+     * Checks if offline simulation is needed based on last background time
      */
     private fun onAppForegrounded() {
         scope.launch {
+            // Check if offline simulation should run
             offlineSimulationManager.checkAndRunOfflineSimulation()
         }
     }

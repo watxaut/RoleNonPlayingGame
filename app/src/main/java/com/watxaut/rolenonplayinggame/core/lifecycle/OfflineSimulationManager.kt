@@ -37,28 +37,55 @@ class OfflineSimulationManager @Inject constructor(
     val simulationState: StateFlow<OfflineSimulationState> = _simulationState.asStateFlow()
 
     /**
-     * Record when the app goes to background
+     * Get user-specific preference key
      */
-    fun recordAppBackgrounded() {
+    private suspend fun getUserPrefKey(): String? {
+        val userId = authRepository.getCurrentUserId()
+        return if (userId != null) {
+            "${PREF_LAST_ACTIVE}_$userId"
+        } else {
+            null
+        }
+    }
+
+    /**
+     * Record when the app goes to background
+     * This is the ONLY place we set the timestamp
+     */
+    suspend fun recordAppBackgrounded() {
+        val prefKey = getUserPrefKey()
+        if (prefKey == null) {
+            Log.d(TAG, "No user logged in, skipping background recording")
+            return
+        }
+
         val timestamp = System.currentTimeMillis()
-        prefs.edit().putLong(PREF_LAST_ACTIVE, timestamp).apply()
-        Log.d(TAG, "App backgrounded at $timestamp")
+        prefs.edit().putLong(prefKey, timestamp).apply()
+        Log.d(TAG, "App backgrounded at $timestamp for user $prefKey")
     }
 
     /**
      * Check if offline simulation is needed and run it
      */
     suspend fun checkAndRunOfflineSimulation() {
-        val lastActiveTime = prefs.getLong(PREF_LAST_ACTIVE, 0L)
+        val prefKey = getUserPrefKey()
+        if (prefKey == null) {
+            Log.d(TAG, "No user logged in, skipping offline simulation check")
+            return
+        }
+
+        val lastActiveTime = prefs.getLong(prefKey, 0L)
 
         if (lastActiveTime == 0L) {
-            Log.d(TAG, "No last active time recorded, skipping simulation")
+            Log.d(TAG, "No last active time recorded for $prefKey, skipping simulation (first time login)")
             return
         }
 
         val now = System.currentTimeMillis()
         val timeOfflineMs = now - lastActiveTime
         val timeOfflineMinutes = timeOfflineMs / (1000 * 60)
+
+        Log.d(TAG, "Checking offline simulation: lastActive=$lastActiveTime, now=$now, offline=${timeOfflineMinutes}min for $prefKey")
 
         // Only run simulation if offline for more than 5 minutes
         if (timeOfflineMinutes < 5) {

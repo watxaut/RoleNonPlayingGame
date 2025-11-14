@@ -24,7 +24,7 @@ data class Character(
     // Current state
     val currentHp: Int,
     val maxHp: Int,
-    val currentLocation: String = "Heartlands - Starting Town",
+    val currentLocation: String = "heartlands_havenmoor", // Location ID (snake_case)
 
     // Personality (hidden from player initially)
     val personalityTraits: PersonalityTraits,
@@ -39,8 +39,8 @@ data class Character(
     val inventory: List<String> = emptyList(),
     val equippedItems: Map<String, String> = emptyMap(),
 
-    // Discovered locations
-    val discoveredLocations: List<String> = listOf("Heartlands - Starting Town"),
+    // Discovered locations (stored as location IDs)
+    val discoveredLocations: List<String> = listOf("heartlands_havenmoor"),
 
     // Active quests (stored as JSON)
     val activeQuests: List<String> = emptyList(),

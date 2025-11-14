@@ -9,6 +9,7 @@ import com.watxaut.rolenonplayinggame.domain.model.ActivityType
 import com.watxaut.rolenonplayinggame.domain.model.Character
 import com.watxaut.rolenonplayinggame.domain.repository.ActivityRepository
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
+import com.watxaut.rolenonplayinggame.presentation.map.getLocationDisplayName
 import java.time.Instant
 import javax.inject.Inject
 import kotlin.math.min
@@ -80,15 +81,23 @@ class ExecuteDecisionUseCase @Inject constructor(
         // Execute combat encounter
         val combatResult = combatSystem.executeEncounter(character, enemy)
 
-        // Build detailed description from combat log
-        val description = buildString {
+        // Build summary for list view
+        val summary = buildString {
             appendLine("Combat: ${character.name} vs ${enemy.name}")
             appendLine("Result: ${if (combatResult.victory) "Victory" else "Defeat"}")
             appendLine()
-            combatResult.combatLog.take(5).forEach { appendLine(it) } // First 5 lines
-            if (combatResult.combatLog.size > 5) {
-                appendLine("... (${combatResult.combatLog.size - 5} more lines)")
+            combatResult.combatLog.take(3).forEach { appendLine(it) }
+            if (combatResult.combatLog.size > 3) {
+                appendLine("... Tap to see ${combatResult.combatLog.size - 3} more lines")
             }
+        }
+
+        // Build full description for expanded view
+        val fullDescription = buildString {
+            appendLine("Combat: ${character.name} vs ${enemy.name}")
+            appendLine("Result: ${if (combatResult.victory) "Victory" else "Defeat"}")
+            appendLine()
+            combatResult.combatLog.forEach { appendLine(it) }
         }
 
         // Update character state based on combat result
@@ -116,7 +125,7 @@ class ExecuteDecisionUseCase @Inject constructor(
             characterId = character.id,
             timestamp = Instant.now(),
             type = ActivityType.COMBAT,
-            description = description.trim(),
+            description = summary.trim(),
             isMajorEvent = !combatResult.victory || combatResult.totalRounds >= 10,
             rewards = if (combatResult.victory) {
                 ActivityRewards(
@@ -127,7 +136,8 @@ class ExecuteDecisionUseCase @Inject constructor(
             metadata = mapOf(
                 "enemy" to enemy.name,
                 "victory" to combatResult.victory.toString(),
-                "rounds" to combatResult.totalRounds.toString()
+                "rounds" to combatResult.totalRounds.toString(),
+                "fullDescription" to fullDescription
             )
         )
 
@@ -146,10 +156,11 @@ class ExecuteDecisionUseCase @Inject constructor(
 
         // Chance of discovery (30%)
         val discovered = Math.random() < 0.3
+        val locationName = getLocationDisplayName(targetLocation)
         val description = if (discovered) {
-            "Explored $targetLocation and made an interesting discovery!"
+            "Explored $locationName and made an interesting discovery!"
         } else {
-            "Explored $targetLocation but found nothing of note."
+            "Explored $locationName but found nothing of note."
         }
 
         val rewards = if (discovered) {
@@ -190,7 +201,7 @@ class ExecuteDecisionUseCase @Inject constructor(
             characterId = character.id,
             timestamp = Instant.now(),
             type = ActivityType.REST,
-            description = "Rested at ${decision.location} and recovered $healAmount HP.",
+            description = "Rested at ${getLocationDisplayName(decision.location)} and recovered $healAmount HP.",
             isMajorEvent = false,
             metadata = mapOf("location" to decision.location, "healed" to healAmount.toString())
         )
@@ -220,7 +231,7 @@ class ExecuteDecisionUseCase @Inject constructor(
             characterId = character.id,
             timestamp = Instant.now(),
             type = ActivityType.REST,
-            description = "Stayed at inn in ${decision.location} and fully recovered ($healAmount HP) for $cost gold.",
+            description = "Stayed at inn in ${getLocationDisplayName(decision.location)} and fully recovered ($healAmount HP) for $cost gold.",
             isMajorEvent = false,
             metadata = mapOf(
                 "location" to decision.location,
@@ -297,7 +308,7 @@ class ExecuteDecisionUseCase @Inject constructor(
             characterId = character.id,
             timestamp = Instant.now(),
             type = ActivityType.SHOPPING,
-            description = "Visited shop in ${decision.location} looking for ${decision.itemType}.",
+            description = "Visited shop in ${getLocationDisplayName(decision.location)} looking for ${decision.itemType}.",
             isMajorEvent = false,
             metadata = mapOf("location" to decision.location, "itemType" to decision.itemType)
         )

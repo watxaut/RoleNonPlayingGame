@@ -41,8 +41,9 @@ class SupabaseApi @Inject constructor(
                 url("${supabaseConfig.url}/functions/v1/offline-simulation")
                 contentType(ContentType.Application.Json)
                 headers {
-                    // Use the authenticated user's access token
+                    // Supabase Edge Functions require both headers
                     append("Authorization", "Bearer $accessToken")
+                    append("apikey", supabaseConfig.anonKey)
                 }
                 setBody(OfflineSimulationRequest(characterId))
             }
