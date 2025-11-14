@@ -199,40 +199,101 @@ function generateRandomItem(enemyLevel: number): any {
 
 /**
  * Get an enemy appropriate for the character's level
+ * Updated for Phase 3 with all 5 regions
  */
 export function getEnemyForLevel(level: number, location: string): Enemy {
-  // Enemy database based on Heartlands region
-  const heartlandsEnemies = [
-    { name: "Forest Slime", baseLevel: 1, health: 20, attack: 5, defense: 2 },
-    { name: "Wild Rabbit", baseLevel: 2, health: 25, attack: 7, defense: 3 },
-    { name: "Bandit Scout", baseLevel: 3, health: 35, attack: 10, defense: 5 },
-    { name: "Young Wolf", baseLevel: 4, health: 40, attack: 12, defense: 6 },
-    { name: "Goblin Warrior", baseLevel: 5, health: 50, attack: 15, defense: 8 },
-    { name: "Forest Bear", baseLevel: 7, health: 70, attack: 20, defense: 12 },
-    { name: "Bandit Leader", baseLevel: 9, health: 90, attack: 25, defense: 15 },
-    { name: "Corrupted Treant", baseLevel: 10, health: 120, attack: 28, defense: 18 },
+  // Comprehensive enemy database for all regions
+  const allEnemies = [
+    // Heartlands (Levels 1-10)
+    { name: "Slime", baseLevel: 1, health: 15, attack: 2, defense: 2, region: "heartlands" },
+    { name: "Wild Rabbit", baseLevel: 1, health: 10, attack: 1, defense: 1, region: "heartlands" },
+    { name: "Grass Snake", baseLevel: 2, health: 12, attack: 3, defense: 1, region: "heartlands" },
+    { name: "Wild Boar", baseLevel: 3, health: 25, attack: 4, defense: 3, region: "heartlands" },
+    { name: "Forest Wolf", baseLevel: 4, health: 30, attack: 5, defense: 3, region: "heartlands" },
+    { name: "Goblin Scout", baseLevel: 4, health: 25, attack: 4, defense: 2, region: "heartlands" },
+    { name: "Bandit", baseLevel: 5, health: 35, attack: 5, defense: 3, region: "heartlands" },
+    { name: "Goblin Warrior", baseLevel: 7, health: 45, attack: 6, defense: 4, region: "heartlands" },
+    { name: "Cave Bear", baseLevel: 8, health: 55, attack: 8, defense: 6, region: "heartlands" },
+    { name: "Corrupted Treant", baseLevel: 10, health: 70, attack: 8, defense: 7, region: "heartlands" },
+
+    // Thornwood Wilds (Levels 11-25)
+    { name: "Vine Horror", baseLevel: 12, health: 70, attack: 8, defense: 6, region: "thornwood" },
+    { name: "Dire Wolf", baseLevel: 13, health: 80, attack: 10, defense: 7, region: "thornwood" },
+    { name: "Corrupted Ent", baseLevel: 14, health: 100, attack: 11, defense: 10, region: "thornwood" },
+    { name: "Spectral Elf", baseLevel: 15, health: 85, attack: 12, defense: 5, region: "thornwood" },
+    { name: "Forest Troll", baseLevel: 16, health: 120, attack: 13, defense: 11, region: "thornwood" },
+    { name: "Web Lurker", baseLevel: 17, health: 95, attack: 11, defense: 7, region: "thornwood" },
+    { name: "Fae Trickster", baseLevel: 19, health: 90, attack: 15, defense: 6, region: "thornwood" },
+
+    // Ashenveil Desert (Levels 21-35)
+    { name: "Desert Scorpion", baseLevel: 22, health: 110, attack: 13, defense: 9, region: "ashenveil" },
+    { name: "Desert Bandit", baseLevel: 23, health: 105, attack: 12, defense: 8, region: "ashenveil" },
+    { name: "Sand Wurm", baseLevel: 24, health: 130, attack: 15, defense: 11, region: "ashenveil" },
+    { name: "Fire Elemental", baseLevel: 26, health: 100, attack: 17, defense: 8, region: "ashenveil" },
+    { name: "Sand Golem", baseLevel: 27, health: 180, attack: 18, defense: 16, region: "ashenveil" },
+    { name: "Desert Cultist", baseLevel: 28, health: 115, attack: 18, defense: 9, region: "ashenveil" },
+    { name: "Skeletal Warrior", baseLevel: 29, health: 125, attack: 16, defense: 10, region: "ashenveil" },
+    { name: "Sand Wraith", baseLevel: 30, health: 140, attack: 16, defense: 10, region: "ashenveil" },
+    { name: "Mummy Guardian", baseLevel: 31, health: 160, attack: 17, defense: 14, region: "ashenveil" },
+
+    // Frostpeak Mountains (Levels 26-40)
+    { name: "Snow Wolf", baseLevel: 26, health: 120, attack: 14, defense: 10, region: "frostpeak" },
+    { name: "Yeti", baseLevel: 27, health: 150, attack: 18, defense: 13, region: "frostpeak" },
+    { name: "Ice Sprite", baseLevel: 28, health: 100, attack: 16, defense: 8, region: "frostpeak" },
+    { name: "Frost Elemental", baseLevel: 30, health: 130, attack: 18, defense: 11, region: "frostpeak" },
+    { name: "Frozen Horror", baseLevel: 32, health: 180, attack: 20, defense: 16, region: "frostpeak" },
+    { name: "Snow Leopard", baseLevel: 33, health: 140, attack: 17, defense: 11, region: "frostpeak" },
+    { name: "Ice Troll", baseLevel: 34, health: 200, attack: 22, defense: 18, region: "frostpeak" },
+    { name: "Frost Giant", baseLevel: 36, health: 250, attack: 25, defense: 22, region: "frostpeak" },
+
+    // Stormcoast Reaches (Levels 35-50)
+    { name: "Sahuagin Warrior", baseLevel: 38, health: 220, attack: 22, defense: 16, region: "stormcoast" },
+    { name: "Drowned Priest", baseLevel: 39, health: 210, attack: 25, defense: 16, region: "stormcoast" },
+    { name: "Sea Elemental", baseLevel: 40, health: 200, attack: 24, defense: 15, region: "stormcoast" },
+    { name: "Ghost Pirate", baseLevel: 41, health: 230, attack: 23, defense: 17, region: "stormcoast" },
+    { name: "Cursed Sailor", baseLevel: 40, health: 215, attack: 21, defense: 18, region: "stormcoast" },
+    { name: "Sea Specter", baseLevel: 43, health: 240, attack: 22, defense: 16, region: "stormcoast" },
+    { name: "Storm Elemental", baseLevel: 45, health: 250, attack: 28, defense: 18, region: "stormcoast" },
+    { name: "Sea Serpent", baseLevel: 46, health: 300, attack: 28, defense: 24, region: "stormcoast" },
+    { name: "Lightning Drake", baseLevel: 48, health: 350, attack: 30, defense: 26, region: "stormcoast" },
   ];
 
-  // Find appropriate enemy for level
-  let selectedEnemy = heartlandsEnemies[0];
-  for (const enemy of heartlandsEnemies) {
-    if (enemy.baseLevel <= level) {
+  // Determine region from location string
+  let region = "heartlands"; // Default
+  const locationLower = location.toLowerCase();
+  if (locationLower.includes("thornwood")) region = "thornwood";
+  else if (locationLower.includes("ashenveil") || locationLower.includes("desert")) region = "ashenveil";
+  else if (locationLower.includes("frostpeak") || locationLower.includes("mountain")) region = "frostpeak";
+  else if (locationLower.includes("stormcoast") || locationLower.includes("coast")) region = "stormcoast";
+
+  // Filter enemies by region and appropriate level
+  const regionalEnemies = allEnemies.filter(e =>
+    e.region === region && e.baseLevel <= level + 3
+  );
+
+  // If no regional enemies found, fall back to heartlands
+  const availableEnemies = regionalEnemies.length > 0 ? regionalEnemies : allEnemies.filter(e => e.region === "heartlands");
+
+  // Select enemy closest to character level
+  let selectedEnemy = availableEnemies[0];
+  for (const enemy of availableEnemies) {
+    if (Math.abs(enemy.baseLevel - level) < Math.abs(selectedEnemy.baseLevel - level)) {
       selectedEnemy = enemy;
-    } else {
-      break;
     }
   }
 
-  // Scale enemy to character level
+  // Scale enemy stats to match exact level
   const levelDiff = level - selectedEnemy.baseLevel;
+  const scaleFactor = level / selectedEnemy.baseLevel;
+
   return {
     name: selectedEnemy.name,
     level,
-    health: selectedEnemy.health + levelDiff * 10,
-    attack: selectedEnemy.attack + levelDiff * 2,
-    defense: selectedEnemy.defense + levelDiff * 1,
-    xpReward: 10 + level * 5,
-    goldReward: 5 + level * 3,
+    health: Math.floor(selectedEnemy.health * scaleFactor * 1.2),
+    attack: Math.floor(selectedEnemy.attack * scaleFactor),
+    defense: Math.floor(selectedEnemy.defense * scaleFactor),
+    xpReward: level * 10 + Math.floor(Math.random() * 20),
+    goldReward: level * 5 + Math.floor(Math.random() * 10),
   };
 }
 
