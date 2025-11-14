@@ -9,8 +9,7 @@ SELECT
     level,
     experience,
     job_class,
-    created_at,
-    ROW_NUMBER() OVER (ORDER BY level DESC, experience DESC) as rank
+    created_at
 FROM characters
 WHERE level > 1 -- Exclude level 1 characters
 ORDER BY level DESC, experience DESC
@@ -18,7 +17,7 @@ LIMIT 100;
 
 -- Create index for faster queries
 CREATE UNIQUE INDEX IF NOT EXISTS leaderboard_levels_id_idx ON leaderboard_levels(id);
-CREATE INDEX IF NOT EXISTS leaderboard_levels_rank_idx ON leaderboard_levels(rank);
+CREATE INDEX IF NOT EXISTS leaderboard_levels_sorting_idx ON leaderboard_levels(level DESC, experience DESC);
 
 -- Leaderboard by Wealth (Gold)
 CREATE MATERIALIZED VIEW IF NOT EXISTS leaderboard_wealth AS
@@ -28,8 +27,7 @@ SELECT
     level,
     gold,
     job_class,
-    created_at,
-    ROW_NUMBER() OVER (ORDER BY gold DESC) as rank
+    created_at
 FROM characters
 WHERE gold > 0
 ORDER BY gold DESC
@@ -37,7 +35,7 @@ LIMIT 100;
 
 -- Create index for faster queries
 CREATE UNIQUE INDEX IF NOT EXISTS leaderboard_wealth_id_idx ON leaderboard_wealth(id);
-CREATE INDEX IF NOT EXISTS leaderboard_wealth_rank_idx ON leaderboard_wealth(rank);
+CREATE INDEX IF NOT EXISTS leaderboard_wealth_sorting_idx ON leaderboard_wealth(gold DESC);
 
 -- Leaderboard by Achievement Count
 CREATE MATERIALIZED VIEW IF NOT EXISTS leaderboard_achievements AS
@@ -47,8 +45,7 @@ SELECT
     c.level,
     c.job_class,
     COUNT(a.id) as achievement_count,
-    c.created_at,
-    ROW_NUMBER() OVER (ORDER BY COUNT(a.id) DESC, c.level DESC) as rank
+    c.created_at
 FROM characters c
 LEFT JOIN achievements a ON c.id = a.character_id
 GROUP BY c.id, c.name, c.level, c.job_class, c.created_at
@@ -58,7 +55,7 @@ LIMIT 100;
 
 -- Create index for faster queries
 CREATE UNIQUE INDEX IF NOT EXISTS leaderboard_achievements_id_idx ON leaderboard_achievements(id);
-CREATE INDEX IF NOT EXISTS leaderboard_achievements_rank_idx ON leaderboard_achievements(rank);
+CREATE INDEX IF NOT EXISTS leaderboard_achievements_sorting_idx ON leaderboard_achievements(achievement_count DESC, level DESC);
 
 -- Function to refresh all leaderboards
 CREATE OR REPLACE FUNCTION refresh_leaderboards()
