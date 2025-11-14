@@ -90,7 +90,14 @@ class AuthRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Email sign-up failed", e)
-            Result.failure(e)
+            val errorMessage = when {
+                e.message?.contains("User already registered") == true ->
+                    "This email is already registered. Please sign in instead."
+                e.message?.contains("Email not confirmed") == true ->
+                    "Please check your email to confirm your account before signing in."
+                else -> e.message ?: "Sign up failed. Please try again."
+            }
+            Result.failure(Exception(errorMessage))
         }
     }
 
@@ -113,7 +120,16 @@ class AuthRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Email sign-in failed", e)
-            Result.failure(e)
+            val errorMessage = when {
+                e.message?.contains("Email not confirmed") == true ->
+                    "Your email is not confirmed. Please check the Supabase dashboard to confirm your account, or delete and recreate your account with email confirmation disabled."
+                e.message?.contains("Invalid login credentials") == true ->
+                    "Invalid email or password. Please try again."
+                e.message?.contains("Email not found") == true ->
+                    "No account found with this email. Please sign up first."
+                else -> e.message ?: "Sign in failed. Please check your credentials."
+            }
+            Result.failure(Exception(errorMessage))
         }
     }
 
