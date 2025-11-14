@@ -1,8 +1,10 @@
 package com.watxaut.rolenonplayinggame.di
 
 import com.watxaut.rolenonplayinggame.data.repository.ActivityRepositoryImpl
+import com.watxaut.rolenonplayinggame.data.repository.AuthRepositoryImpl
 import com.watxaut.rolenonplayinggame.data.repository.CharacterRepositoryImpl
 import com.watxaut.rolenonplayinggame.domain.repository.ActivityRepository
+import com.watxaut.rolenonplayinggame.domain.repository.AuthRepository
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
 import dagger.Binds
 import dagger.Module
@@ -16,6 +18,12 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(
+        impl: AuthRepositoryImpl
+    ): AuthRepository
 
     @Binds
     @Singleton
