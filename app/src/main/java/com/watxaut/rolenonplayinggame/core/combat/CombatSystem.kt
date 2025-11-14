@@ -357,10 +357,11 @@ data class Enemy(
 )
 
 enum class EnemyType {
-    NORMAL,     // Regular monsters
-    ELITE,      // Tougher than normal
-    BOSS,       // Major boss fight
-    LEGENDARY   // Legendary monsters from world lore
+    NORMAL,      // Regular monsters
+    ELITE,       // Tougher than normal, special encounters
+    BOSS,        // Major boss fight, dungeon guardians
+    WORLD_BOSS,  // Legendary world bosses (monthly respawn)
+    LEGENDARY    // Mythical entities (unconfirmed/special events)
 }
 
 /**
