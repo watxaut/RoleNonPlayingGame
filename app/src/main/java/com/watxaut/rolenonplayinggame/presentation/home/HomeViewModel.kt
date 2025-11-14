@@ -44,16 +44,18 @@ class HomeViewModel @Inject constructor(
      * Automatically updates when characters change
      */
     val characters: StateFlow<List<Character>> = flow {
-        // Get current authenticated user
+        // Get current authenticated user on IO dispatcher to avoid blocking main thread
         val userId = authRepository.getCurrentUserId()
         emit(userId)
-    }.flatMapLatest { userId ->
-        if (userId != null) {
-            characterRepository.getCharactersByUserId(userId)
-        } else {
-            emptyFlow()
-        }
     }
+        .flowOn(Dispatchers.IO)  // Run auth check on IO thread
+        .flatMapLatest { userId ->
+            if (userId != null) {
+                characterRepository.getCharactersByUserId(userId)
+            } else {
+                emptyFlow()
+            }
+        }
         .flowOn(Dispatchers.IO)  // Run database queries on IO thread
         .stateIn(
             scope = viewModelScope,

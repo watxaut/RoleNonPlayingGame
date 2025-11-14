@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.random.Random
 
@@ -64,21 +63,20 @@ class GameViewModel @Inject constructor(
             characterRepository.getCharacterByIdFlow(characterId)
                 .flowOn(Dispatchers.IO)
                 .collect { character ->
-                    withContext(Dispatchers.Main) {
-                        if (character != null) {
-                            _uiState.update { it.copy(character = character, isLoading = false) }
+                    // StateFlow updates are thread-safe, no need for withContext(Dispatchers.Main)
+                    if (character != null) {
+                        _uiState.update { it.copy(character = character, isLoading = false) }
 
-                            // Start decision loop if not already running
-                            if (decisionLoopJob == null || decisionLoopJob?.isActive == false) {
-                                startDecisionLoop(character)
-                            }
-                        } else {
-                            _uiState.update {
-                                it.copy(
-                                    error = "Character not found",
-                                    isLoading = false
-                                )
-                            }
+                        // Start decision loop if not already running
+                        if (decisionLoopJob == null || decisionLoopJob?.isActive == false) {
+                            startDecisionLoop(character)
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                error = "Character not found",
+                                isLoading = false
+                            )
                         }
                     }
                 }
@@ -89,9 +87,8 @@ class GameViewModel @Inject constructor(
             activityRepository.getActivitiesForCharacter(characterId, limit = 50)
                 .flowOn(Dispatchers.IO)
                 .collect { activities ->
-                    withContext(Dispatchers.Main) {
-                        _uiState.update { it.copy(activityLog = activities) }
-                    }
+                    // StateFlow updates are thread-safe, no need for withContext(Dispatchers.Main)
+                    _uiState.update { it.copy(activityLog = activities) }
                 }
         }
     }
@@ -154,6 +151,9 @@ class GameViewModel @Inject constructor(
                         }
                     }
 
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    // Job was cancelled - exit the loop cleanly
+                    throw e  // Re-throw to properly cancel the coroutine
                 } catch (e: Exception) {
                     _uiState.update {
                         it.copy(
@@ -238,7 +238,6 @@ class GameViewModel @Inject constructor(
     /**
      * Pause the AI decision loop and all observers.
      * Called when navigating away from the GameScreen.
-     * Blocks until all jobs are cancelled to prevent database conflicts.
      */
     fun pauseAi() {
         // Cancel all jobs immediately
