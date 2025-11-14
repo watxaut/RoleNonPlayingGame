@@ -5,7 +5,8 @@ import com.watxaut.rolenonplayinggame.domain.repository.AuthRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.builtin.Email
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -76,8 +77,8 @@ class AuthRepositoryImpl @Inject constructor(
                 false
             } else {
                 // Check if user is anonymous
-                // Supabase stores this in user metadata
-                user.userMetadata?.get("is_anonymous") == true
+                // Supabase stores this in user metadata as a JsonElement
+                user.userMetadata?.get("is_anonymous")?.jsonPrimitive?.booleanOrNull ?: false
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error checking if user is anonymous", e)
