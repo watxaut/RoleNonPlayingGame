@@ -178,7 +178,7 @@ class CharacterCreationViewModel @Inject constructor(
 
         viewModelScope.launch {
             val result = createCharacterUseCase(
-                userId = "anonymous_user", // TODO: Get from auth
+                userId = "00000000-0000-0000-0000-000000000000", // Anonymous UUID for testing
                 name = _uiState.value.name,
                 jobClass = jobClass,
                 stats = _uiState.value.stats

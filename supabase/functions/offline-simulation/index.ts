@@ -1,6 +1,6 @@
 // Supabase Edge Function: offline-simulation
 // Simulates character progression while the player is offline
-// Time compression: 1 real hour = 6 game hours
+// Time compression: 1 real hour = 2 game hours
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -82,8 +82,8 @@ serve(async (req) => {
     const timeOfflineMs = now.getTime() - lastActiveAt.getTime();
     const timeOfflineHours = timeOfflineMs / (1000 * 60 * 60);
 
-    // Time compression: 1 real hour = 6 game hours
-    const gameHoursToSimulate = Math.floor(timeOfflineHours * 6);
+    // Time compression: 1 real hour = 2 game hours
+    const gameHoursToSimulate = Math.floor(timeOfflineHours * 2);
 
     // Don't simulate if less than 5 minutes offline (< 0.5 game hours)
     if (gameHoursToSimulate < 0.5) {

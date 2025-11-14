@@ -7,6 +7,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
@@ -35,6 +37,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -42,6 +46,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.watxaut.rolenonplayinggame.domain.model.Activity
 import com.watxaut.rolenonplayinggame.domain.model.ActivityType
@@ -75,6 +83,8 @@ fun GameScreen(
     viewModel: GameViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    var selectedActivity by remember { mutableStateOf<Activity?>(null) }
 
     // Load character when screen opens
     LaunchedEffect(characterId) {
@@ -131,42 +141,42 @@ fun GameScreen(
                     )
                 }
             } else if (uiState.character != null) {
-                // Main game view
+                // Main game view with tabs
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    // Character stats card
-                    CharacterStatsCard(
-                        character = uiState.character!!,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    // Tab Row
+                    TabRow(selectedTabIndex = selectedTabIndex) {
+                        Tab(
+                            selected = selectedTabIndex == 0,
+                            onClick = { selectedTabIndex = 0 },
+                            text = { Text("Current") }
+                        )
+                        Tab(
+                            selected = selectedTabIndex == 1,
+                            onClick = { selectedTabIndex = 1 },
+                            text = { Text("Activity Log") }
+                        )
+                    }
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Current action
-                    CurrentActionCard(
-                        currentAction = uiState.currentAction,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Activity log
-                    ActivityLogSection(
-                        activities = uiState.activityLog,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    )
-
-                    // Combat log (if in combat)
-                    if (uiState.combatLog.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        CombatLogSection(
+                    // Tab Content
+                    when (selectedTabIndex) {
+                        0 -> CurrentTab(
+                            character = uiState.character!!,
+                            currentAction = uiState.currentAction,
                             combatLog = uiState.combatLog,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                        )
+                        1 -> ActivityLogTab(
+                            activities = uiState.activityLog,
+                            onActivityClick = { activity ->
+                                selectedActivity = activity
+                            },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
                         )
                     }
                 }
@@ -212,6 +222,98 @@ fun GameScreen(
                             style = MaterialTheme.typography.titleLarge
                         )
                     }
+                }
+            }
+        }
+
+        // Activity detail dialog
+        selectedActivity?.let { activity ->
+            ActivityDetailDialog(
+                activity = activity,
+                onDismiss = { selectedActivity = null }
+            )
+        }
+    }
+}
+
+/**
+ * Tab 1: Current stats and activity
+ */
+@Composable
+fun CurrentTab(
+    character: Character,
+    currentAction: String,
+    combatLog: List<String>,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        // Character stats card
+        CharacterStatsCard(
+            character = character,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Current action
+        CurrentActionCard(
+            currentAction = currentAction,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Combat log (if in combat)
+        if (combatLog.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            CombatLogSection(
+                combatLog = combatLog,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+/**
+ * Tab 2: Activity log with clickable items
+ */
+@Composable
+fun ActivityLogTab(
+    activities: List<Activity>,
+    onActivityClick: (Activity) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = "Activity Log",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        val listState = rememberLazyListState()
+
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            items(activities, key = { it.id }) { activity ->
+                ClickableActivityLogItem(
+                    activity = activity,
+                    onClick = { onActivityClick(activity) }
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+
+            if (activities.isEmpty()) {
+                item {
+                    Text(
+                        text = "No activities yet. Character will start acting soon...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
@@ -473,6 +575,235 @@ fun ActivityLogItem(activity: Activity) {
                         style = MaterialTheme.typography.labelSmall,
                         color = Color(0xFFFFD700)
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Clickable activity log item for the Activity Log tab
+ */
+@Composable
+fun ClickableActivityLogItem(
+    activity: Activity,
+    onClick: () -> Unit
+) {
+    val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
+    val time = activity.timestamp
+        .atZone(ZoneId.systemDefault())
+        .format(timeFormatter)
+
+    val backgroundColor = when (activity.type) {
+        ActivityType.COMBAT -> MaterialTheme.colorScheme.errorContainer
+        ActivityType.LEVEL_UP -> Color(0xFFFFF9C4) // Light yellow
+        ActivityType.DEATH -> Color(0xFFFFCDD2) // Light red
+        ActivityType.EXPLORATION -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor)
+    ) {
+        Row(
+            modifier = Modifier.padding(8.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Text(
+                text = time,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.width(60.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = activity.description,
+                    style = if (activity.isMajorEvent) {
+                        MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                    } else {
+                        MaterialTheme.typography.bodySmall
+                    }
+                )
+                if (activity.rewards != null) {
+                    Text(
+                        text = buildString {
+                            if (activity.rewards.experience > 0) append("+${activity.rewards.experience} XP ")
+                            if (activity.rewards.gold > 0) append("+${activity.rewards.gold} Gold")
+                        }.trim(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFFFD700)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Dialog showing activity details with lore
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ActivityDetailDialog(
+    activity: Activity,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                // Header with close button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Activity Details",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, "Close")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Activity type badge
+                val activityTypeColor = when (activity.type) {
+                    ActivityType.COMBAT -> Color.Red
+                    ActivityType.LEVEL_UP -> Color(0xFFFFD700)
+                    ActivityType.EXPLORATION -> Color.Blue
+                    ActivityType.DEATH -> Color.DarkGray
+                    else -> MaterialTheme.colorScheme.primary
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(activityTypeColor.copy(alpha = 0.2f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = activity.type.name.replace("_", " "),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = activityTypeColor
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Timestamp
+                val dateFormatter = DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm:ss")
+                val formattedTime = activity.timestamp
+                    .atZone(ZoneId.systemDefault())
+                    .format(dateFormatter)
+
+                Text(
+                    text = formattedTime,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Description
+                Text(
+                    text = activity.description,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Rewards section
+                if (activity.rewards != null) {
+                    Text(
+                        text = "Rewards",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (activity.rewards.experience > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = "XP",
+                                tint = Color(0xFFFFD700),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "+${activity.rewards.experience} Experience",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+
+                    if (activity.rewards.gold > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = "Gold",
+                                tint = Color(0xFFFFD700),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "+${activity.rewards.gold} Gold",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color(0xFFFFD700)
+                            )
+                        }
+                    }
+
+                    if (activity.rewards.items.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Items: ${activity.rewards.items.joinToString(", ")}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
+                // Lore section
+                activity.metadata["lore"]?.let { lore ->
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Lore",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = lore,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                ),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
                 }
             }
         }
