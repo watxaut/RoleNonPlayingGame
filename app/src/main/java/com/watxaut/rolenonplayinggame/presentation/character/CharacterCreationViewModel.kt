@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.watxaut.rolenonplayinggame.domain.model.CharacterStats
 import com.watxaut.rolenonplayinggame.domain.model.JobClass
 import com.watxaut.rolenonplayinggame.domain.model.StatType
+import com.watxaut.rolenonplayinggame.domain.repository.AuthRepository
 import com.watxaut.rolenonplayinggame.domain.usecase.CreateCharacterUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class CharacterCreationViewModel @Inject constructor(
-    private val createCharacterUseCase: CreateCharacterUseCase
+    private val createCharacterUseCase: CreateCharacterUseCase,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CharacterCreationUiState())
@@ -177,8 +179,32 @@ class CharacterCreationViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true, generalError = null) }
 
         viewModelScope.launch {
+            // Ensure user is authenticated (sign in anonymously if needed)
+            val authResult = authRepository.signInAnonymously()
+            if (authResult.isFailure) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        generalError = "Authentication failed: ${authResult.exceptionOrNull()?.message}"
+                    )
+                }
+                return@launch
+            }
+
+            val userId = authResult.getOrNull()
+            if (userId == null) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        generalError = "Failed to get authenticated user ID"
+                    )
+                }
+                return@launch
+            }
+
+            // Create character with authenticated user ID
             val result = createCharacterUseCase(
-                userId = "00000000-0000-0000-0000-000000000000", // Anonymous UUID for testing
+                userId = userId,
                 name = _uiState.value.name,
                 jobClass = jobClass,
                 stats = _uiState.value.stats

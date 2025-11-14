@@ -1,13 +1,20 @@
 package com.watxaut.rolenonplayinggame.presentation.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +28,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.watxaut.rolenonplayinggame.core.lifecycle.OfflineSimulationState
+import com.watxaut.rolenonplayinggame.domain.model.Character
 import com.watxaut.rolenonplayinggame.presentation.summary.OfflineSummaryScreen
 
 /**
@@ -35,45 +43,67 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val simulationState by viewModel.simulationState.collectAsState()
+    val characters by viewModel.characters.collectAsState()
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = if (characters.isEmpty()) Arrangement.Center else Arrangement.Top
     ) {
-        Text(
-            text = "Role Non-Playing Game",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center
-        )
+        if (characters.isEmpty()) {
+            // Show welcome message when no characters exist
+            Text(
+                text = "Role Non-Playing Game",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center
+            )
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Text(
-            text = "Watch your autonomous characters\nlive their own adventures",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center
-        )
+            Text(
+                text = "Watch your autonomous characters\nlive their own adventures",
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center
+            )
 
-        Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
-        Button(
-            onClick = onNavigateToCharacterCreation
-        ) {
-            Text("Create New Character")
+            Button(
+                onClick = onNavigateToCharacterCreation
+            ) {
+                Text("Create New Character")
+            }
+        } else {
+            // Show character list
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Your Characters",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            characters.forEach { character ->
+                CharacterListItem(
+                    character = character,
+                    onClick = { onNavigateToGame(character.id) }
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = onNavigateToCharacterCreation
+            ) {
+                Text("Create Another Character")
+            }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // TODO: Show list of existing characters
-        Text(
-            text = "Character list will appear here",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 
     // Show offline simulation loading or summary
@@ -118,6 +148,96 @@ fun HomeScreen(
 
         OfflineSimulationState.Idle -> {
             // No dialog to show
+        }
+    }
+}
+
+/**
+ * Character list item card
+ */
+@Composable
+private fun CharacterListItem(
+    character: Character,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Character name and job class
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = character.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = character.jobClass.displayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Text(
+                    text = "Lv ${character.level}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // HP bar
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "HP:",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.width(36.dp)
+                )
+                LinearProgressIndicator(
+                    progress = { character.getHealthPercentage() },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(8.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "${character.currentHp}/${character.maxHp}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Location
+            Text(
+                text = "📍 ${character.currentLocation}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Gold
+            Text(
+                text = "💰 ${character.gold} gold",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
