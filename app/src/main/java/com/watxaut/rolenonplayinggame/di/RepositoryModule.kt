@@ -1,6 +1,8 @@
 package com.watxaut.rolenonplayinggame.di
 
+import com.watxaut.rolenonplayinggame.data.repository.ActivityRepositoryImpl
 import com.watxaut.rolenonplayinggame.data.repository.CharacterRepositoryImpl
+import com.watxaut.rolenonplayinggame.domain.repository.ActivityRepository
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
 import dagger.Binds
 import dagger.Module
@@ -20,4 +22,10 @@ abstract class RepositoryModule {
     abstract fun bindCharacterRepository(
         impl: CharacterRepositoryImpl
     ): CharacterRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindActivityRepository(
+        impl: ActivityRepositoryImpl
+    ): ActivityRepository
 }
