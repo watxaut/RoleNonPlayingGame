@@ -179,24 +179,13 @@ class CharacterCreationViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true, generalError = null) }
 
         viewModelScope.launch {
-            // Ensure user is authenticated (sign in anonymously if needed)
-            val authResult = authRepository.signInAnonymously()
-            if (authResult.isFailure) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        generalError = "Authentication failed: ${authResult.exceptionOrNull()?.message}"
-                    )
-                }
-                return@launch
-            }
-
-            val userId = authResult.getOrNull()
+            // Get authenticated user ID
+            val userId = authRepository.getCurrentUserId()
             if (userId == null) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        generalError = "Failed to get authenticated user ID"
+                        generalError = "You must be logged in to create a character"
                     )
                 }
                 return@launch

@@ -42,8 +42,7 @@ class HomeViewModel @Inject constructor(
      * Automatically updates when characters change
      */
     val characters: StateFlow<List<Character>> = flow {
-        // Ensure user is authenticated
-        authRepository.signInAnonymously()
+        // Get current authenticated user
         val userId = authRepository.getCurrentUserId()
         emit(userId)
     }.flatMapLatest { userId ->
@@ -57,17 +56,6 @@ class HomeViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
-
-    /**
-     * Initialize authentication
-     * Called when the screen is first displayed
-     */
-    init {
-        viewModelScope.launch {
-            // Sign in anonymously if not already authenticated
-            authRepository.signInAnonymously()
-        }
-    }
 
     /**
      * Dismiss the offline simulation summary

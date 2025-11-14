@@ -5,6 +5,7 @@ import com.watxaut.rolenonplayinggame.domain.repository.AuthRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
@@ -34,6 +35,15 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getCurrentUserEmail(): String? {
+        return try {
+            auth.currentUserOrNull()?.email
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting current user email", e)
+            null
+        }
+    }
+
     override suspend fun signInAnonymously(): Result<String> {
         return try {
             // Check if already signed in
@@ -57,6 +67,52 @@ class AuthRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Anonymous sign-in failed", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun signUpWithEmail(email: String, password: String): Result<String> {
+        return try {
+            Log.d(TAG, "Signing up with email: $email")
+
+            auth.signUpWith(Email) {
+                this.email = email
+                this.password = password
+            }
+
+            val userId = auth.currentUserOrNull()?.id
+            if (userId != null) {
+                Log.d(TAG, "Email sign-up successful: $userId")
+                Result.success(userId)
+            } else {
+                Log.e(TAG, "Email sign-up failed: user ID is null")
+                Result.failure(Exception("Failed to get user ID after sign-up"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Email sign-up failed", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun signInWithEmail(email: String, password: String): Result<String> {
+        return try {
+            Log.d(TAG, "Signing in with email: $email")
+
+            auth.signInWith(Email) {
+                this.email = email
+                this.password = password
+            }
+
+            val userId = auth.currentUserOrNull()?.id
+            if (userId != null) {
+                Log.d(TAG, "Email sign-in successful: $userId")
+                Result.success(userId)
+            } else {
+                Log.e(TAG, "Email sign-in failed: user ID is null")
+                Result.failure(Exception("Failed to get user ID after sign-in"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Email sign-in failed", e)
             Result.failure(e)
         }
     }
