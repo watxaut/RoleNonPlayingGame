@@ -6,6 +6,7 @@ import android.util.Log
 import com.watxaut.rolenonplayinggame.data.local.dao.CharacterDao
 import com.watxaut.rolenonplayinggame.data.remote.api.SupabaseApi
 import com.watxaut.rolenonplayinggame.data.remote.dto.OfflineSimulationResponse
+import com.watxaut.rolenonplayinggame.domain.repository.AuthRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +22,8 @@ import javax.inject.Singleton
 class OfflineSimulationManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val characterDao: CharacterDao,
-    private val supabaseApi: SupabaseApi
+    private val supabaseApi: SupabaseApi,
+    private val authRepository: AuthRepository
 ) {
 
     private val prefs: SharedPreferences = context.getSharedPreferences(
@@ -85,6 +87,16 @@ class OfflineSimulationManager @Inject constructor(
         _simulationState.value = OfflineSimulationState.Loading
 
         try {
+            // Ensure user is authenticated before calling the simulation
+            val authResult = authRepository.signInAnonymously()
+            if (authResult.isFailure) {
+                Log.e(TAG, "Failed to authenticate user for offline simulation", authResult.exceptionOrNull())
+                _simulationState.value = OfflineSimulationState.Error(
+                    "Authentication failed: ${authResult.exceptionOrNull()?.message}"
+                )
+                return
+            }
+
             val result = supabaseApi.runOfflineSimulation(characterId)
 
             result.fold(
