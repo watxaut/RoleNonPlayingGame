@@ -40,14 +40,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -124,20 +122,16 @@ fun WorldMapScreen(
             val canvasWidth = size.width
             val canvasHeight = size.height
 
-            // Apply transformations to the entire canvas
-            drawIntoCanvas { canvas ->
-                canvas.save()
-                canvas.translate(offsetX, offsetY)
-                canvas.scale(scale, scale, canvasWidth / 2, canvasHeight / 2)
-
-                // Draw the world map
-                drawIsometricWorld(
-                    canvasWidth = canvasWidth,
-                    canvasHeight = canvasHeight,
-                    characters = uiState.characters
-                )
-
-                canvas.restore()
+            // Apply transformations using DrawScope transformations
+            translate(offsetX, offsetY) {
+                scale(scale, pivot = Offset(canvasWidth / 2, canvasHeight / 2)) {
+                    // Draw the world map
+                    drawIsometricWorld(
+                        canvasWidth = canvasWidth,
+                        canvasHeight = canvasHeight,
+                        characters = uiState.characters
+                    )
+                }
             }
         }
 
