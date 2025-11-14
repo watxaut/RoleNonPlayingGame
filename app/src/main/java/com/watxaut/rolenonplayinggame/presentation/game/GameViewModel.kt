@@ -42,6 +42,8 @@ class GameViewModel @Inject constructor(
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
     private var decisionLoopJob: Job? = null
+    private var characterObserverJob: Job? = null
+    private var activityObserverJob: Job? = null
     private var characterId: String? = null
 
     /**
@@ -50,7 +52,11 @@ class GameViewModel @Inject constructor(
     fun loadCharacter(characterId: String) {
         this.characterId = characterId
 
-        viewModelScope.launch {
+        // Cancel any existing observers
+        characterObserverJob?.cancel()
+        activityObserverJob?.cancel()
+
+        characterObserverJob = viewModelScope.launch {
             // Load character from repository
             characterRepository.getCharacterByIdFlow(characterId).collect { character ->
                 if (character != null) {
@@ -72,7 +78,7 @@ class GameViewModel @Inject constructor(
         }
 
         // Load activity log
-        viewModelScope.launch {
+        activityObserverJob = viewModelScope.launch {
             activityRepository.getActivitiesForCharacter(characterId, limit = 50)
                 .collect { activities ->
                     _uiState.update { it.copy(activityLog = activities) }
@@ -239,7 +245,10 @@ class GameViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        // Cancel all running jobs when ViewModel is cleared
         decisionLoopJob?.cancel()
+        characterObserverJob?.cancel()
+        activityObserverJob?.cancel()
     }
 }
 
