@@ -40,10 +40,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -51,8 +55,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.watxaut.rolenonplayinggame.domain.model.Character
-import com.watxaut.rolenonplayinggame.domain.model.Location
-import com.watxaut.rolenonplayinggame.domain.model.WorldRegion
+import com.watxaut.rolenonplayinggame.domain.model.Region
+import kotlin.math.sqrt
 
 /**
  * World map screen showing the Island of Aethermoor in isometric view.
@@ -64,7 +68,7 @@ fun WorldMapScreen(
     viewModel: WorldMapViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var selectedLocation by remember { mutableStateOf<Pair<WorldRegion, Location>?>(null) }
+    var selectedLocation by remember { mutableStateOf<Pair<Region, MapLocation>?>(null) }
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
@@ -121,15 +125,19 @@ fun WorldMapScreen(
             val canvasHeight = size.height
 
             // Apply transformations to the entire canvas
-            translate(offsetX, offsetY) {
-                scale(scale, pivot = Offset(canvasWidth / 2, canvasHeight / 2)) {
-                    // Draw the world map
-                    drawIsometricWorld(
-                        canvasWidth = canvasWidth,
-                        canvasHeight = canvasHeight,
-                        characters = uiState.characters
-                    )
-                }
+            drawIntoCanvas { canvas ->
+                canvas.save()
+                canvas.translate(offsetX, offsetY)
+                canvas.scale(scale, scale, canvasWidth / 2, canvasHeight / 2)
+
+                // Draw the world map
+                drawIsometricWorld(
+                    canvasWidth = canvasWidth,
+                    canvasHeight = canvasHeight,
+                    characters = uiState.characters
+                )
+
+                canvas.restore()
             }
         }
 
@@ -176,7 +184,7 @@ fun WorldMapScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                WorldRegion.entries.forEach { region ->
+                Region.entries.forEach { region ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(vertical = 2.dp)
@@ -185,11 +193,11 @@ fun WorldMapScreen(
                             modifier = Modifier
                                 .size(16.dp)
                                 .clip(CircleShape)
-                                .background(Color(region.color))
+                                .background(Color(region.getMapColor()))
                         )
                         Spacer(modifier = Modifier.size(8.dp))
                         Text(
-                            text = "${region.displayName} (${region.minLevel}-${region.maxLevel})",
+                            text = "${region.displayName} (${region.levelRange.first}-${region.levelRange.last})",
                             style = MaterialTheme.typography.labelSmall
                         )
                     }
@@ -249,7 +257,7 @@ fun WorldMapScreen(
             LocationDetailDialog(
                 region = region,
                 location = location,
-                characters = uiState.characters.filter { it.currentLocation == location.name },
+                characters = uiState.characters.filter { it.currentLocation == location.locationName },
                 onDismiss = { selectedLocation = null }
             )
         }
@@ -264,39 +272,31 @@ private fun findLocationAt(
     y: Float,
     canvasWidth: Float,
     canvasHeight: Float
-): Pair<WorldRegion, Location>? {
+): Pair<Region, MapLocation>? {
     val centerX = canvasWidth / 2
     val centerY = canvasHeight / 2
-
-    val regionPositions = mapOf(
-        WorldRegion.HEARTLANDS to Offset(0f, 0f),
-        WorldRegion.THORNWOOD_WILDS to Offset(-250f, 0f),
-        WorldRegion.FROSTPEAK_MOUNTAINS to Offset(0f, -200f),
-        WorldRegion.ASHENVEIL_DESERT to Offset(0f, 200f),
-        WorldRegion.STORMCOAST_REACHES to Offset(250f, 0f)
-    )
 
     val tileWidth = 200f
     val tileHeight = 150f
     val hitRadius = 30f // Hit detection radius in pixels
 
-    var closestLocation: Pair<WorldRegion, Location>? = null
+    var closestLocation: Pair<Region, MapLocation>? = null
     var closestDistance = Float.MAX_VALUE
 
     // Check each region and its locations
-    WorldRegion.entries.forEach { region ->
-        val regionOffset = regionPositions[region] ?: Offset(0f, 0f)
+    Region.entries.forEach { region ->
+        val regionOffset = region.getMapPosition()
         val baseX = centerX + regionOffset.x
         val baseY = centerY + regionOffset.y
 
-        region.getLocations().forEach { location ->
+        region.getMapLocations().forEach { location ->
             val locX = baseX + (location.x - 0.5f) * tileWidth * 0.8f
             val locY = baseY + (location.y - 0.5f) * tileHeight * 0.8f
 
             // Calculate distance from tap to location
             val dx = x - locX
             val dy = y - locY
-            val distance = kotlin.math.sqrt(dx * dx + dy * dy)
+            val distance = sqrt(dx * dx + dy * dy)
 
             // Check if this is the closest location within hit radius
             if (distance < hitRadius && distance < closestDistance) {
@@ -320,19 +320,9 @@ private fun DrawScope.drawIsometricWorld(
     val centerX = canvasWidth / 2
     val centerY = canvasHeight / 2
 
-    // Define the layout of regions in isometric grid
-    // Heartlands in center, others around it
-    val regionPositions = mapOf(
-        WorldRegion.HEARTLANDS to Offset(0f, 0f),
-        WorldRegion.THORNWOOD_WILDS to Offset(-250f, 0f),
-        WorldRegion.FROSTPEAK_MOUNTAINS to Offset(0f, -200f),
-        WorldRegion.ASHENVEIL_DESERT to Offset(0f, 200f),
-        WorldRegion.STORMCOAST_REACHES to Offset(250f, 0f)
-    )
-
     // Draw each region
-    WorldRegion.entries.forEach { region ->
-        val regionOffset = regionPositions[region] ?: Offset(0f, 0f)
+    Region.entries.forEach { region ->
+        val regionOffset = region.getMapPosition()
         drawRegion(
             region = region,
             baseX = centerX + regionOffset.x,
@@ -346,7 +336,7 @@ private fun DrawScope.drawIsometricWorld(
  * Draw a single region with its locations
  */
 private fun DrawScope.drawRegion(
-    region: WorldRegion,
+    region: Region,
     baseX: Float,
     baseY: Float,
     characters: List<Character>
@@ -360,18 +350,18 @@ private fun DrawScope.drawRegion(
         centerY = baseY,
         width = tileWidth,
         height = tileHeight,
-        color = Color(region.color).copy(alpha = 0.6f)
+        color = Color(region.getMapColor()).copy(alpha = 0.6f)
     )
 
-    // Draw region name
-    drawContext.canvas.nativeCanvas.apply {
+    // Draw region name using native canvas
+    drawIntoCanvas { canvas ->
         val paint = android.graphics.Paint().apply {
             textAlign = android.graphics.Paint.Align.CENTER
             textSize = 14f
             color = android.graphics.Color.WHITE
             isFakeBoldText = true
         }
-        drawText(
+        canvas.nativeCanvas.drawText(
             region.displayName,
             baseX,
             baseY - tileHeight / 3,
@@ -380,7 +370,7 @@ private fun DrawScope.drawRegion(
     }
 
     // Draw locations as smaller tiles
-    region.getLocations().forEach { location ->
+    region.getMapLocations().forEach { location ->
         val locX = baseX + (location.x - 0.5f) * tileWidth * 0.8f
         val locY = baseY + (location.y - 0.5f) * tileHeight * 0.8f
 
@@ -391,20 +381,20 @@ private fun DrawScope.drawRegion(
             center = Offset(locX, locY)
         )
         drawCircle(
-            color = Color(region.color),
+            color = Color(region.getMapColor()),
             radius = 4f,
             center = Offset(locX, locY)
         )
 
         // Draw location name
-        drawContext.canvas.nativeCanvas.apply {
+        drawIntoCanvas { canvas ->
             val paint = android.graphics.Paint().apply {
                 textAlign = android.graphics.Paint.Align.CENTER
                 textSize = 10f
                 color = android.graphics.Color.WHITE
             }
-            drawText(
-                location.name,
+            canvas.nativeCanvas.drawText(
+                location.locationName,
                 locX,
                 locY + 15f,
                 paint
@@ -412,8 +402,8 @@ private fun DrawScope.drawRegion(
         }
 
         // Draw characters at this location
-        val charactersHere = characters.filter { it.currentLocation == location.name }
-        charactersHere.forEachIndexed { index, character ->
+        val charactersHere = characters.filter { it.currentLocation == location.locationName }
+        charactersHere.forEachIndexed { index, _ ->
             val charX = locX + (index * 12f)
             val charY = locY - 20f
 
@@ -467,8 +457,8 @@ private fun DrawScope.drawIsometricTile(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocationDetailDialog(
-    region: WorldRegion,
-    location: Location,
+    region: Region,
+    location: MapLocation,
     characters: List<Character>,
     onDismiss: () -> Unit
 ) {
@@ -485,7 +475,7 @@ fun LocationDetailDialog(
             Column(
                 modifier = Modifier.padding(16.dp)
             ) {
-                // Header
+                // Header with close button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -493,12 +483,12 @@ fun LocationDetailDialog(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = location.name,
+                            text = location.locationName,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = location.type.displayName,
+                            text = location.locationType.displayName,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -534,7 +524,7 @@ fun LocationDetailDialog(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "${region.minLevel}-${region.maxLevel}",
+                            text = "${region.levelRange.first}-${region.levelRange.last}",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -545,7 +535,7 @@ fun LocationDetailDialog(
 
                 // Description
                 Text(
-                    text = location.description,
+                    text = region.description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
