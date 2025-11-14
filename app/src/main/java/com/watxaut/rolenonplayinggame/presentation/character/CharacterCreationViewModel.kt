@@ -8,11 +8,13 @@ import com.watxaut.rolenonplayinggame.domain.model.StatType
 import com.watxaut.rolenonplayinggame.domain.repository.AuthRepository
 import com.watxaut.rolenonplayinggame.domain.usecase.CreateCharacterUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -178,15 +180,17 @@ class CharacterCreationViewModel @Inject constructor(
         // All validation passed - create character
         _uiState.update { it.copy(isLoading = true, generalError = null) }
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             // Get authenticated user ID
             val userId = authRepository.getCurrentUserId()
             if (userId == null) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        generalError = "You must be logged in to create a character"
-                    )
+                withContext(Dispatchers.Main) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            generalError = "You must be logged in to create a character"
+                        )
+                    }
                 }
                 return@launch
             }
@@ -199,20 +203,22 @@ class CharacterCreationViewModel @Inject constructor(
                 stats = _uiState.value.stats
             )
 
-            result.onSuccess { character ->
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        createdCharacterId = character.id,
-                        creationComplete = true
-                    )
-                }
-            }.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        generalError = error.message ?: "Failed to create character"
-                    )
+            withContext(Dispatchers.Main) {
+                result.onSuccess { character ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            createdCharacterId = character.id,
+                            creationComplete = true
+                        )
+                    }
+                }.onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            generalError = error.message ?: "Failed to create character"
+                        )
+                    }
                 }
             }
         }
