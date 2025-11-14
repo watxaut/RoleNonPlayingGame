@@ -4,6 +4,7 @@ package com.watxaut.rolenonplayinggame.presentation.navigation
  * Sealed class representing navigation destinations
  */
 sealed class Screen(val route: String) {
+    data object Main : Screen("main")
     data object Home : Screen("home")
     data object CharacterCreation : Screen("character_creation")
     data object Game : Screen("game/{characterId}") {

@@ -9,7 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.watxaut.rolenonplayinggame.presentation.character.CharacterCreationScreen
 import com.watxaut.rolenonplayinggame.presentation.game.GameScreen
-import com.watxaut.rolenonplayinggame.presentation.home.HomeScreen
+import com.watxaut.rolenonplayinggame.presentation.main.MainScreen
 
 /**
  * Main navigation component for the app
@@ -22,11 +22,12 @@ fun AppNavigation(
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route,
+        startDestination = Screen.Main.route,
         modifier = modifier
     ) {
-        composable(Screen.Home.route) {
-            HomeScreen(
+        // Main screen with bottom navigation (Heroes, Map, Profile)
+        composable(Screen.Main.route) {
+            MainScreen(
                 onNavigateToCharacterCreation = {
                     navController.navigate(Screen.CharacterCreation.route)
                 },
@@ -40,7 +41,7 @@ fun AppNavigation(
             CharacterCreationScreen(
                 onCharacterCreated = { characterId ->
                     navController.navigate(Screen.Game.createRoute(characterId)) {
-                        popUpTo(Screen.Home.route)
+                        popUpTo(Screen.Main.route)
                     }
                 },
                 onNavigateBack = {
