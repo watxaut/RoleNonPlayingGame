@@ -3,6 +3,7 @@ package com.watxaut.rolenonplayinggame.presentation.map
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -84,6 +85,37 @@ fun WorldMapScreen(
                         offsetY += pan.y
                     }
                 }
+                .pointerInput(scale, offsetX, offsetY) {
+                    detectTapGestures { tapOffset ->
+                        // Transform tap coordinates to map coordinates
+                        val canvasWidth = size.width.toFloat()
+                        val canvasHeight = size.height.toFloat()
+
+                        // Reverse the transformations applied to the canvas
+                        val pivotX = canvasWidth / 2
+                        val pivotY = canvasHeight / 2
+
+                        // Reverse translate
+                        val translatedX = tapOffset.x - offsetX
+                        val translatedY = tapOffset.y - offsetY
+
+                        // Reverse scale (scale is applied around pivot point)
+                        val scaledX = (translatedX - pivotX) / scale + pivotX
+                        val scaledY = (translatedY - pivotY) / scale + pivotY
+
+                        // Find which location was tapped
+                        val tappedLocation = findLocationAt(
+                            x = scaledX,
+                            y = scaledY,
+                            canvasWidth = canvasWidth,
+                            canvasHeight = canvasHeight
+                        )
+
+                        tappedLocation?.let { (region, location) ->
+                            selectedLocation = region to location
+                        }
+                    }
+                }
         ) {
             val canvasWidth = size.width
             val canvasHeight = size.height
@@ -95,10 +127,7 @@ fun WorldMapScreen(
                     drawIsometricWorld(
                         canvasWidth = canvasWidth,
                         canvasHeight = canvasHeight,
-                        characters = uiState.characters,
-                        onLocationClick = { region, location ->
-                            selectedLocation = region to location
-                        }
+                        characters = uiState.characters
                     )
                 }
             }
@@ -188,7 +217,7 @@ fun WorldMapScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Pinch to zoom\nDrag to pan",
+                    text = "Pinch to zoom\nDrag to pan\nTap locations for info",
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -228,13 +257,65 @@ fun WorldMapScreen(
 }
 
 /**
+ * Find which location was tapped based on coordinates
+ */
+private fun findLocationAt(
+    x: Float,
+    y: Float,
+    canvasWidth: Float,
+    canvasHeight: Float
+): Pair<WorldRegion, Location>? {
+    val centerX = canvasWidth / 2
+    val centerY = canvasHeight / 2
+
+    val regionPositions = mapOf(
+        WorldRegion.HEARTLANDS to Offset(0f, 0f),
+        WorldRegion.THORNWOOD_WILDS to Offset(-250f, 0f),
+        WorldRegion.FROSTPEAK_MOUNTAINS to Offset(0f, -200f),
+        WorldRegion.ASHENVEIL_DESERT to Offset(0f, 200f),
+        WorldRegion.STORMCOAST_REACHES to Offset(250f, 0f)
+    )
+
+    val tileWidth = 200f
+    val tileHeight = 150f
+    val hitRadius = 30f // Hit detection radius in pixels
+
+    var closestLocation: Pair<WorldRegion, Location>? = null
+    var closestDistance = Float.MAX_VALUE
+
+    // Check each region and its locations
+    WorldRegion.entries.forEach { region ->
+        val regionOffset = regionPositions[region] ?: Offset(0f, 0f)
+        val baseX = centerX + regionOffset.x
+        val baseY = centerY + regionOffset.y
+
+        region.getLocations().forEach { location ->
+            val locX = baseX + (location.x - 0.5f) * tileWidth * 0.8f
+            val locY = baseY + (location.y - 0.5f) * tileHeight * 0.8f
+
+            // Calculate distance from tap to location
+            val dx = x - locX
+            val dy = y - locY
+            val distance = kotlin.math.sqrt(dx * dx + dy * dy)
+
+            // Check if this is the closest location within hit radius
+            if (distance < hitRadius && distance < closestDistance) {
+                closestDistance = distance
+                closestLocation = region to location
+            }
+        }
+    }
+
+    return closestLocation
+}
+
+/**
  * Draw the isometric world map
  */
 private fun DrawScope.drawIsometricWorld(
     canvasWidth: Float,
     canvasHeight: Float,
-    characters: List<Character>,
-    onLocationClick: (WorldRegion, Location) -> Unit
+    characters: List<Character>
 ) {
     val centerX = canvasWidth / 2
     val centerY = canvasHeight / 2
