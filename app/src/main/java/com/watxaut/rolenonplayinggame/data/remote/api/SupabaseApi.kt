@@ -5,6 +5,7 @@ import com.watxaut.rolenonplayinggame.data.remote.dto.OfflineSimulationResponse
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,7 +26,7 @@ class SupabaseApi @Inject constructor(
      */
     suspend fun runOfflineSimulation(characterId: String): Result<OfflineSimulationResponse> {
         return try {
-            val response = httpClient.post {
+            val response: HttpResponse = httpClient.post {
                 url("${supabaseConfig.url}/functions/v1/offline-simulation")
                 contentType(ContentType.Application.Json)
                 headers {
@@ -36,9 +37,19 @@ class SupabaseApi @Inject constructor(
                 setBody(OfflineSimulationRequest(characterId))
             }
 
-            Result.success(response.body())
+            // Check HTTP status before deserializing
+            if (response.status.value in 200..299) {
+                Result.success(response.body())
+            } else {
+                val errorBody = response.body<String>()
+                Result.failure(
+                    Exception("Offline simulation endpoint returned ${response.status.value}: $errorBody")
+                )
+            }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(
+                Exception("Offline simulation failed: ${e.message}. Note: Edge function may not be deployed yet.", e)
+            )
         }
     }
 
