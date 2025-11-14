@@ -10,11 +10,13 @@ import com.watxaut.rolenonplayinggame.domain.repository.ActivityRepository
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
 import com.watxaut.rolenonplayinggame.domain.usecase.ExecuteDecisionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -42,6 +44,8 @@ class GameViewModel @Inject constructor(
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
     private var decisionLoopJob: Job? = null
+    private var characterObserverJob: Job? = null
+    private var activityObserverJob: Job? = null
     private var characterId: String? = null
 
     /**
@@ -50,31 +54,40 @@ class GameViewModel @Inject constructor(
     fun loadCharacter(characterId: String) {
         this.characterId = characterId
 
-        viewModelScope.launch {
-            // Load character from repository
-            characterRepository.getCharacterByIdFlow(characterId).collect { character ->
-                if (character != null) {
-                    _uiState.update { it.copy(character = character, isLoading = false) }
+        // Cancel any existing observers
+        characterObserverJob?.cancel()
+        activityObserverJob?.cancel()
 
-                    // Start decision loop if not already running
-                    if (decisionLoopJob == null || decisionLoopJob?.isActive == false) {
-                        startDecisionLoop(character)
-                    }
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            error = "Character not found",
-                            isLoading = false
-                        )
+        characterObserverJob = viewModelScope.launch(Dispatchers.IO) {
+            // Load character from repository
+            characterRepository.getCharacterByIdFlow(characterId)
+                .flowOn(Dispatchers.IO)
+                .collect { character ->
+                    // StateFlow updates are thread-safe, no need for withContext(Dispatchers.Main)
+                    if (character != null) {
+                        _uiState.update { it.copy(character = character, isLoading = false) }
+
+                        // Start decision loop if not already running
+                        if (decisionLoopJob == null || decisionLoopJob?.isActive == false) {
+                            startDecisionLoop(character)
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                error = "Character not found",
+                                isLoading = false
+                            )
+                        }
                     }
                 }
-            }
         }
 
         // Load activity log
-        viewModelScope.launch {
+        activityObserverJob = viewModelScope.launch(Dispatchers.IO) {
             activityRepository.getActivitiesForCharacter(characterId, limit = 50)
+                .flowOn(Dispatchers.IO)
                 .collect { activities ->
+                    // StateFlow updates are thread-safe, no need for withContext(Dispatchers.Main)
                     _uiState.update { it.copy(activityLog = activities) }
                 }
         }
@@ -138,6 +151,9 @@ class GameViewModel @Inject constructor(
                         }
                     }
 
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    // Job was cancelled - exit the loop cleanly
+                    throw e  // Re-throw to properly cancel the coroutine
                 } catch (e: Exception) {
                     _uiState.update {
                         it.copy(
@@ -220,10 +236,16 @@ class GameViewModel @Inject constructor(
     }
 
     /**
-     * Pause the AI decision loop.
+     * Pause the AI decision loop and all observers.
+     * Called when navigating away from the GameScreen.
      */
     fun pauseAi() {
+        // Cancel all jobs immediately
         decisionLoopJob?.cancel()
+        characterObserverJob?.cancel()
+        activityObserverJob?.cancel()
+
+        // Update UI state
         _uiState.update { it.copy(currentAction = "AI Paused") }
     }
 
@@ -239,7 +261,10 @@ class GameViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        // Cancel all running jobs when ViewModel is cleared
         decisionLoopJob?.cancel()
+        characterObserverJob?.cancel()
+        activityObserverJob?.cancel()
     }
 }
 

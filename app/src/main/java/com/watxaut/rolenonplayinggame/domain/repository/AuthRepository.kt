@@ -11,11 +11,33 @@ interface AuthRepository {
     suspend fun getCurrentUserId(): String?
 
     /**
+     * Get the current user's email
+     * Returns null if not authenticated or anonymous
+     */
+    suspend fun getCurrentUserEmail(): String?
+
+    /**
      * Sign in anonymously
      * Creates an anonymous session if one doesn't exist
      * @return The user ID of the anonymous user
      */
     suspend fun signInAnonymously(): Result<String>
+
+    /**
+     * Sign up with email and password
+     * @param email User's email address
+     * @param password User's password
+     * @return The user ID of the created user
+     */
+    suspend fun signUpWithEmail(email: String, password: String): Result<String>
+
+    /**
+     * Sign in with email and password
+     * @param email User's email address
+     * @param password User's password
+     * @return The user ID of the authenticated user
+     */
+    suspend fun signInWithEmail(email: String, password: String): Result<String>
 
     /**
      * Check if user is currently authenticated (anonymous or permanent)
