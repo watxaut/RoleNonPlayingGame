@@ -38,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -53,8 +52,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.watxaut.rolenonplayinggame.domain.model.Character
 import com.watxaut.rolenonplayinggame.domain.model.Location
 import com.watxaut.rolenonplayinggame.domain.model.WorldRegion
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
  * World map screen showing the Island of Aethermoor in isometric view.
@@ -91,18 +88,20 @@ fun WorldMapScreen(
             val canvasWidth = size.width
             val canvasHeight = size.height
 
-            // Draw the world map
-            drawIsometricWorld(
-                canvasWidth = canvasWidth,
-                canvasHeight = canvasHeight,
-                scale = scale,
-                offsetX = offsetX,
-                offsetY = offsetY,
-                characters = uiState.characters,
-                onLocationClick = { region, location ->
-                    selectedLocation = region to location
+            // Apply transformations to the entire canvas
+            translate(offsetX, offsetY) {
+                scale(scale, pivot = Offset(canvasWidth / 2, canvasHeight / 2)) {
+                    // Draw the world map
+                    drawIsometricWorld(
+                        canvasWidth = canvasWidth,
+                        canvasHeight = canvasHeight,
+                        characters = uiState.characters,
+                        onLocationClick = { region, location ->
+                            selectedLocation = region to location
+                        }
+                    )
                 }
-            )
+            }
         }
 
         // Title card at top
@@ -132,7 +131,7 @@ fun WorldMapScreen(
             }
         }
 
-        // Legend card at bottom
+        // Legend card at bottom left
         Card(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -169,6 +168,53 @@ fun WorldMapScreen(
             }
         }
 
+        // Zoom controls and info at bottom right
+        Card(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Zoom: ${String.format("%.1f", scale)}x",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Pinch to zoom\nDrag to pan",
+                    style = MaterialTheme.typography.labelSmall,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.clickable {
+                        scale = 1f
+                        offsetX = 0f
+                        offsetY = 0f
+                    },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Text(
+                        text = "Reset View",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        }
+
         // Location detail dialog
         selectedLocation?.let { (region, location) ->
             LocationDetailDialog(
@@ -187,14 +233,11 @@ fun WorldMapScreen(
 private fun DrawScope.drawIsometricWorld(
     canvasWidth: Float,
     canvasHeight: Float,
-    scale: Float,
-    offsetX: Float,
-    offsetY: Float,
     characters: List<Character>,
     onLocationClick: (WorldRegion, Location) -> Unit
 ) {
-    val centerX = canvasWidth / 2 + offsetX
-    val centerY = canvasHeight / 2 + offsetY
+    val centerX = canvasWidth / 2
+    val centerY = canvasHeight / 2
 
     // Define the layout of regions in isometric grid
     // Heartlands in center, others around it
@@ -211,9 +254,8 @@ private fun DrawScope.drawIsometricWorld(
         val regionOffset = regionPositions[region] ?: Offset(0f, 0f)
         drawRegion(
             region = region,
-            baseX = centerX + regionOffset.x * scale,
-            baseY = centerY + regionOffset.y * scale,
-            scale = scale,
+            baseX = centerX + regionOffset.x,
+            baseY = centerY + regionOffset.y,
             characters = characters
         )
     }
@@ -226,11 +268,10 @@ private fun DrawScope.drawRegion(
     region: WorldRegion,
     baseX: Float,
     baseY: Float,
-    scale: Float,
     characters: List<Character>
 ) {
-    val tileWidth = 200f * scale
-    val tileHeight = 150f * scale
+    val tileWidth = 200f
+    val tileHeight = 150f
 
     // Draw region base as isometric diamond
     drawIsometricTile(
@@ -245,7 +286,7 @@ private fun DrawScope.drawRegion(
     drawContext.canvas.nativeCanvas.apply {
         val paint = android.graphics.Paint().apply {
             textAlign = android.graphics.Paint.Align.CENTER
-            textSize = 14f * scale
+            textSize = 14f
             color = android.graphics.Color.WHITE
             isFakeBoldText = true
         }
@@ -265,12 +306,12 @@ private fun DrawScope.drawRegion(
         // Draw location marker
         drawCircle(
             color = Color.White,
-            radius = 6f * scale,
+            radius = 6f,
             center = Offset(locX, locY)
         )
         drawCircle(
             color = Color(region.color),
-            radius = 4f * scale,
+            radius = 4f,
             center = Offset(locX, locY)
         )
 
@@ -278,13 +319,13 @@ private fun DrawScope.drawRegion(
         drawContext.canvas.nativeCanvas.apply {
             val paint = android.graphics.Paint().apply {
                 textAlign = android.graphics.Paint.Align.CENTER
-                textSize = 10f * scale
+                textSize = 10f
                 color = android.graphics.Color.WHITE
             }
             drawText(
                 location.name,
                 locX,
-                locY + 15f * scale,
+                locY + 15f,
                 paint
             )
         }
@@ -292,19 +333,19 @@ private fun DrawScope.drawRegion(
         // Draw characters at this location
         val charactersHere = characters.filter { it.currentLocation == location.name }
         charactersHere.forEachIndexed { index, character ->
-            val charX = locX + (index * 12f * scale)
-            val charY = locY - 20f * scale
+            val charX = locX + (index * 12f)
+            val charY = locY - 20f
 
             // Draw character marker
             drawCircle(
                 color = Color.Yellow,
-                radius = 5f * scale,
+                radius = 5f,
                 center = Offset(charX, charY),
-                style = Stroke(width = 2f * scale)
+                style = Stroke(width = 2f)
             )
             drawCircle(
                 color = Color(0xFFFFD700),
-                radius = 3f * scale,
+                radius = 3f,
                 center = Offset(charX, charY)
             )
         }
