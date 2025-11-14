@@ -104,7 +104,11 @@ fun GameScreen(
             TopAppBar(
                 title = { Text("Observing ${uiState.character?.name ?: "Character"}") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        // Pause AI BEFORE navigating to prevent database conflicts
+                        viewModel.pauseAi()
+                        onNavigateBack()
+                    }) {
                         Icon(Icons.Default.ArrowBack, "Back")
                     }
                 },

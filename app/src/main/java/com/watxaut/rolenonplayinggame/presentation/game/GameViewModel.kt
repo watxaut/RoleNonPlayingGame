@@ -10,13 +10,16 @@ import com.watxaut.rolenonplayinggame.domain.repository.ActivityRepository
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
 import com.watxaut.rolenonplayinggame.domain.usecase.ExecuteDecisionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.random.Random
 
@@ -56,32 +59,39 @@ class GameViewModel @Inject constructor(
         characterObserverJob?.cancel()
         activityObserverJob?.cancel()
 
-        characterObserverJob = viewModelScope.launch {
+        characterObserverJob = viewModelScope.launch(Dispatchers.IO) {
             // Load character from repository
-            characterRepository.getCharacterByIdFlow(characterId).collect { character ->
-                if (character != null) {
-                    _uiState.update { it.copy(character = character, isLoading = false) }
+            characterRepository.getCharacterByIdFlow(characterId)
+                .flowOn(Dispatchers.IO)
+                .collect { character ->
+                    withContext(Dispatchers.Main) {
+                        if (character != null) {
+                            _uiState.update { it.copy(character = character, isLoading = false) }
 
-                    // Start decision loop if not already running
-                    if (decisionLoopJob == null || decisionLoopJob?.isActive == false) {
-                        startDecisionLoop(character)
-                    }
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            error = "Character not found",
-                            isLoading = false
-                        )
+                            // Start decision loop if not already running
+                            if (decisionLoopJob == null || decisionLoopJob?.isActive == false) {
+                                startDecisionLoop(character)
+                            }
+                        } else {
+                            _uiState.update {
+                                it.copy(
+                                    error = "Character not found",
+                                    isLoading = false
+                                )
+                            }
+                        }
                     }
                 }
-            }
         }
 
         // Load activity log
-        activityObserverJob = viewModelScope.launch {
+        activityObserverJob = viewModelScope.launch(Dispatchers.IO) {
             activityRepository.getActivitiesForCharacter(characterId, limit = 50)
+                .flowOn(Dispatchers.IO)
                 .collect { activities ->
-                    _uiState.update { it.copy(activityLog = activities) }
+                    withContext(Dispatchers.Main) {
+                        _uiState.update { it.copy(activityLog = activities) }
+                    }
                 }
         }
     }
@@ -228,11 +238,15 @@ class GameViewModel @Inject constructor(
     /**
      * Pause the AI decision loop and all observers.
      * Called when navigating away from the GameScreen.
+     * Blocks until all jobs are cancelled to prevent database conflicts.
      */
     fun pauseAi() {
+        // Cancel all jobs immediately
         decisionLoopJob?.cancel()
         characterObserverJob?.cancel()
         activityObserverJob?.cancel()
+
+        // Update UI state
         _uiState.update { it.copy(currentAction = "AI Paused") }
     }
 
