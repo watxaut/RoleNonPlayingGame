@@ -71,8 +71,9 @@ object NetworkModule {
     @Singleton
     fun provideSupabaseApi(
         httpClient: HttpClient,
-        config: SupabaseConfig
+        config: SupabaseConfig,
+        supabaseClient: SupabaseClient
     ): SupabaseApi {
-        return SupabaseApi(httpClient, config)
+        return SupabaseApi(httpClient, config, supabaseClient)
     }
 }
