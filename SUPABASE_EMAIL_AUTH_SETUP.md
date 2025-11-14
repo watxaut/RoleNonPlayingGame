@@ -1,10 +1,12 @@
 # Supabase Email Authentication Setup Guide
 
-This guide explains how to configure your Supabase project to enable email-based authentication for the Role Non-Playing Game Android app.
+This guide explains how to configure your Supabase project to enable email-based authentication for
+the Role Non-Playing Game Android app.
 
 ## Overview
 
-The app now uses email-based authentication instead of anonymous authentication. Users must sign up with an email and password before they can create heroes (characters).
+The app now uses email-based authentication instead of anonymous authentication. Users must sign up
+with an email and password before they can create heroes (characters).
 
 ## Supabase Dashboard Configuration
 
@@ -22,13 +24,13 @@ Follow these steps to enable email authentication in your Supabase dashboard:
 1. In the **Authentication** → **Providers** → **Email** section, configure the following settings:
 
    **Confirm email:**
-   - **Recommended for production**: Enable this option
-   - **For development/testing**: Disable this option to skip email confirmation
-   - When enabled, users will receive a confirmation email before they can sign in
-   - When disabled, users can sign in immediately after registration
+    - **Recommended for production**: Enable this option
+    - **For development/testing**: Disable this option to skip email confirmation
+    - When enabled, users will receive a confirmation email before they can sign in
+    - When disabled, users can sign in immediately after registration
 
    **Secure email change:**
-   - Enable this if you want to require email confirmation when users change their email address
+    - Enable this if you want to require email confirmation when users change their email address
 
 2. Click **Save** to apply the changes
 
@@ -36,16 +38,16 @@ Follow these steps to enable email authentication in your Supabase dashboard:
 
 1. Navigate to **Authentication** → **Email Templates**
 2. Customize the email templates for:
-   - **Confirm signup** - Sent when users register (if email confirmation is enabled)
-   - **Invite user** - Sent when you invite users
-   - **Magic Link** - Sent for passwordless login (not used in this app)
-   - **Change Email Address** - Sent when users change their email
-   - **Reset Password** - Sent when users request a password reset
+    - **Confirm signup** - Sent when users register (if email confirmation is enabled)
+    - **Invite user** - Sent when you invite users
+    - **Magic Link** - Sent for passwordless login (not used in this app)
+    - **Change Email Address** - Sent when users change their email
+    - **Reset Password** - Sent when users request a password reset
 
 3. You can customize the:
-   - Subject line
-   - Email body (supports HTML)
-   - Sender name
+    - Subject line
+    - Email body (supports HTML)
+    - Sender name
 
 ### 4. Configure Auth Settings
 
@@ -53,27 +55,27 @@ Follow these steps to enable email authentication in your Supabase dashboard:
 2. Configure the following options:
 
    **Site URL:**
-   - Set this to your app's URL scheme or website URL
-   - For Android: `com.watxaut.rolenonplayinggame://`
-   - This is used for email redirects
+    - Set this to your app's URL scheme or website URL
+    - For Android: `com.watxaut.rolenonplayinggame://`
+    - This is used for email redirects
 
    **Redirect URLs:**
-   - Add any additional URLs that are allowed for redirects after email confirmation
-   - For Android, you may need to add: `com.watxaut.rolenonplayinggame://auth-callback`
+    - Add any additional URLs that are allowed for redirects after email confirmation
+    - For Android, you may need to add: `com.watxaut.rolenonplayinggame://auth-callback`
 
    **JWT Settings:**
-   - **JWT expiry limit**: Default is 3600 seconds (1 hour)
-   - Adjust based on your security requirements
+    - **JWT expiry limit**: Default is 3600 seconds (1 hour)
+    - Adjust based on your security requirements
 
    **Security Settings:**
-   - **Enable phone signup**: Leave disabled (not used in this app)
-   - **Enable phone confirmations**: Leave disabled (not used in this app)
-   - **Disable email signups**: Leave disabled (we want email signups)
-   - **Enable manual linking**: Optional
+    - **Enable phone signup**: Leave disabled (not used in this app)
+    - **Enable phone confirmations**: Leave disabled (not used in this app)
+    - **Disable email signups**: Leave disabled (we want email signups)
+    - **Enable manual linking**: Optional
 
    **Password Settings:**
-   - **Minimum password length**: Default is 6 characters (matches our app validation)
-   - Adjust if you want stricter password requirements
+    - **Minimum password length**: Default is 6 characters (matches our app validation)
+    - Adjust if you want stricter password requirements
 
 3. Click **Save** to apply the changes
 
@@ -86,7 +88,8 @@ Since we're moving from anonymous to email-based authentication:
 3. **Disable** the anonymous provider
 4. Click **Save**
 
-**Note:** If you have existing anonymous users, you may want to keep it enabled temporarily and handle migration. However, for new deployments, disable it immediately.
+**Note:** If you have existing anonymous users, you may want to keep it enabled temporarily and
+handle migration. However, for new deployments, disable it immediately.
 
 ### 6. Update Row Level Security (RLS) Policies
 
@@ -94,7 +97,8 @@ Your existing RLS policies should work with email authentication, but verify:
 
 1. Navigate to **Authentication** → **Policies**
 2. Check the policies for the `characters` table
-3. Ensure policies use `auth.uid()` to identify users (this works for both anonymous and email-authenticated users)
+3. Ensure policies use `auth.uid()` to identify users (this works for both anonymous and
+   email-authenticated users)
 
 Example policy (should already be in place from `supabase/enable_rls_with_anonymous_auth.sql`):
 
@@ -126,11 +130,12 @@ USING (auth.uid() = user_id);
 1. Navigate to **Authentication** → **Settings** → **SMTP Settings**
 2. By default, Supabase uses their email service (limited to 3-4 emails per hour for free tier)
 3. For production, configure your own SMTP server:
-   - Enable **Custom SMTP**
-   - Enter your SMTP host, port, username, and password
-   - Test the connection
+    - Enable **Custom SMTP**
+    - Enter your SMTP host, port, username, and password
+    - Test the connection
 
 **Recommended SMTP providers:**
+
 - SendGrid
 - Amazon SES
 - Mailgun
@@ -147,9 +152,9 @@ USING (auth.uid() = user_id);
 
 1. Navigate to **Authentication** → **Rate Limits**
 2. Configure rate limits to prevent abuse:
-   - **Email signups**: Recommended 3-5 per hour per IP
-   - **Email signins**: Recommended 30 per hour per IP
-   - **Password recovery**: Recommended 3 per hour per IP
+    - **Email signups**: Recommended 3-5 per hour per IP
+    - **Email signins**: Recommended 30 per hour per IP
+    - **Password recovery**: Recommended 3 per hour per IP
 
 ## Testing the Setup
 
@@ -203,7 +208,8 @@ USING (auth.uid() = user_id);
 If you have existing anonymous users:
 
 1. **Option 1: Keep both** - Allow both anonymous and email authentication temporarily
-2. **Option 2: Migrate data** - Write a migration script to link anonymous characters to email accounts
+2. **Option 2: Migrate data** - Write a migration script to link anonymous characters to email
+   accounts
 3. **Option 3: Fresh start** - Disable anonymous, delete anonymous users, start fresh
 
 For most new projects, **Option 3** is recommended.
@@ -232,6 +238,7 @@ After configuring Supabase:
 ## Support
 
 For more information, refer to:
+
 - [Supabase Auth Documentation](https://supabase.com/docs/guides/auth)
 - [Supabase Email Auth Guide](https://supabase.com/docs/guides/auth/auth-email)
 - [Supabase Android SDK](https://supabase.com/docs/reference/kotlin/introduction)

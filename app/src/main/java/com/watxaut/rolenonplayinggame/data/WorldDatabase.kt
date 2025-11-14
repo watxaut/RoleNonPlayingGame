@@ -155,7 +155,7 @@ object WorldDatabase {
 
     // ==================== ASHENVEIL DESERT (Levels 21-35) ====================
 
-    private val ashenve ilLocations = listOf(
+    private val ashenveilLocations = listOf(
         Location(
             id = "ashenveil_sandstone_bazaar",
             name = "Sandstone Bazaar",
