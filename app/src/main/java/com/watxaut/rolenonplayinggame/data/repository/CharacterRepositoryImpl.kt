@@ -3,6 +3,7 @@ package com.watxaut.rolenonplayinggame.data.repository
 import android.util.Log
 import com.watxaut.rolenonplayinggame.data.local.dao.CharacterDao
 import com.watxaut.rolenonplayinggame.data.local.entity.CharacterEntity
+import com.watxaut.rolenonplayinggame.data.remote.dto.SupabaseCharacterDto
 import com.watxaut.rolenonplayinggame.domain.model.Character
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
 import io.github.jan.supabase.SupabaseClient
@@ -53,35 +54,35 @@ class CharacterRepositoryImpl @Inject constructor(
             try {
                 // Use service role key to bypass RLS for now (development mode)
                 // In production, use proper authentication
-                val supabaseData = mapOf(
-                    "id" to character.id,
-                    "user_id" to character.userId, // This should be a valid UUID
-                    "name" to character.name,
-                    "level" to character.level,
-                    "experience" to character.experience,
-                    "strength" to character.strength,
-                    "intelligence" to character.intelligence,
-                    "agility" to character.agility,
-                    "luck" to character.luck,
-                    "charisma" to character.charisma,
-                    "vitality" to character.vitality,
-                    "current_hp" to character.currentHp,
-                    "max_hp" to character.maxHp,
-                    "current_location" to character.currentLocation,
-                    "personality_courage" to character.personalityTraits.courage,
-                    "personality_greed" to character.personalityTraits.greed,
-                    "personality_curiosity" to character.personalityTraits.curiosity,
-                    "personality_aggression" to character.personalityTraits.aggression,
-                    "personality_social" to character.personalityTraits.social,
-                    "personality_impulsive" to character.personalityTraits.impulsive,
-                    "job_class" to character.jobClass.name,
-                    "gold" to character.gold,
-                    "inventory" to toJsonArray(character.inventory),
-                    "equipped_items" to toJsonMap(character.equippedItems),
-                    "discovered_locations" to toJsonArray(character.discoveredLocations),
-                    "active_quests" to toJsonArray(character.activeQuests),
-                    "created_at" to character.createdAt.toString(),
-                    "last_active_at" to character.lastActiveAt.toString()
+                val supabaseData = SupabaseCharacterDto(
+                    id = character.id,
+                    userId = character.userId,
+                    name = character.name,
+                    level = character.level,
+                    experience = character.experience,
+                    strength = character.strength,
+                    intelligence = character.intelligence,
+                    agility = character.agility,
+                    luck = character.luck,
+                    charisma = character.charisma,
+                    vitality = character.vitality,
+                    currentHp = character.currentHp,
+                    maxHp = character.maxHp,
+                    currentLocation = character.currentLocation,
+                    personalityCourage = character.personalityTraits.courage,
+                    personalityGreed = character.personalityTraits.greed,
+                    personalityCuriosity = character.personalityTraits.curiosity,
+                    personalityAggression = character.personalityTraits.aggression,
+                    personalitySocial = character.personalityTraits.social,
+                    personalityImpulsive = character.personalityTraits.impulsive,
+                    jobClass = character.jobClass.name,
+                    gold = character.gold,
+                    inventory = toJsonArray(character.inventory),
+                    equippedItems = toJsonMap(character.equippedItems),
+                    discoveredLocations = toJsonArray(character.discoveredLocations),
+                    activeQuests = toJsonArray(character.activeQuests),
+                    createdAt = character.createdAt.toString(),
+                    lastActiveAt = character.lastActiveAt.toString()
                 )
 
                 Log.d(TAG, "Attempting to insert character to Supabase: ${character.name} with user_id: ${character.userId}")
