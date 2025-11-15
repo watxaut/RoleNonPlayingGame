@@ -2,6 +2,7 @@ package com.watxaut.rolenonplayinggame.presentation.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.watxaut.rolenonplayinggame.core.lifecycle.OfflineSimulationManager
 import com.watxaut.rolenonplayinggame.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,8 @@ data class ProfileUiState(
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val offlineSimulationManager: OfflineSimulationManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -54,6 +56,9 @@ class ProfileViewModel @Inject constructor(
             val result = authRepository.signOut()
 
             result.onSuccess {
+                // Clear cached user ID for offline simulation tracking
+                offlineSimulationManager.clearCachedUserId()
+
                 _uiState.update { it.copy(isLoading = false) }
                 onSignOutSuccess()
             }.onFailure { error ->

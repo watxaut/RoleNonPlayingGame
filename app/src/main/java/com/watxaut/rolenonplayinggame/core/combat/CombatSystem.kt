@@ -1,6 +1,7 @@
 package com.watxaut.rolenonplayinggame.core.combat
 
 import com.watxaut.rolenonplayinggame.core.dice.DiceRoller
+import com.watxaut.rolenonplayinggame.core.messages.MessageProvider
 import com.watxaut.rolenonplayinggame.domain.model.Character
 import kotlin.math.max
 import kotlin.random.Random
@@ -21,7 +22,8 @@ import kotlin.random.Random
  * 5. Check for victory/defeat
  */
 class CombatSystem(
-    private val diceRoller: DiceRoller = DiceRoller()
+    private val diceRoller: DiceRoller = DiceRoller(),
+    private val messageProvider: MessageProvider = MessageProvider()
 ) {
 
     /**
@@ -254,6 +256,157 @@ class CombatSystem(
     }
 
     /**
+     * Execute simplified combat encounter with a single d21 roll.
+     *
+     * Formula:
+     * 1. Roll d21
+     * 2. Calculate power: (STR + INT + AGI + VIT) / 4 + Level * 2
+     * 3. Combat Score = Roll + (CharacterPower - EnemyPower) + LevelBonus
+     *
+     * Outcomes:
+     * - Roll 21: Critical Success → WIN (bonus rewards)
+     * - Roll 1: Critical Failure → DEATH
+     * - Score >= 12: WIN (lowered from 15 for better balance)
+     * - Score >= 7: FLEE (lowered from 8 for better balance)
+     * - Score < 7: DEATH (lose half gold on respawn)
+     *
+     * Low level characters (1-3) get a +2 combat bonus to help early survival.
+     *
+     * @param character The player's character
+     * @param enemy The enemy to fight
+     * @return SimplifiedCombatResult with outcome and details
+     */
+    fun executeSimplifiedCombat(
+        character: Character,
+        enemy: Enemy
+    ): SimplifiedCombatResult {
+        val roll = diceRoller.roll()
+
+        // Get character's total stats including equipment bonuses
+        val totalStats = character.getTotalStats()
+
+        // Calculate power levels
+        val characterPower = calculatePower(
+            strength = totalStats.strength,
+            intelligence = totalStats.intelligence,
+            agility = totalStats.agility,
+            vitality = totalStats.vitality,
+            level = character.level
+        )
+
+        val enemyPower = calculatePower(
+            strength = enemy.strength,
+            intelligence = enemy.intelligence,
+            agility = enemy.agility,
+            vitality = enemy.vitality,
+            level = enemy.level
+        )
+
+        val powerDifference = characterPower - enemyPower
+
+        // Give low-level characters a small combat bonus to improve early survival
+        val levelBonus = if (character.level <= 3) 2.0 else 0.0
+
+        val combatScore = roll.toDouble() + powerDifference + levelBonus
+
+        // Determine outcome (more forgiving thresholds)
+        val outcome = when {
+            roll == 21 -> CombatOutcome.WIN // Critical success
+            roll == 1 -> CombatOutcome.DEATH // Critical failure
+            combatScore >= 12.0 -> CombatOutcome.WIN // Lowered from 15
+            combatScore >= 7.0 -> CombatOutcome.FLEE // Lowered from 8
+            else -> CombatOutcome.DEATH
+        }
+
+        // Calculate rewards and item drops for wins
+        val (rewards, droppedEquipment) = if (outcome == CombatOutcome.WIN) {
+            val baseXp = calculateExperienceReward(enemy.level, character.level)
+            val baseGold = calculateGoldReward(enemy.level)
+
+            // Bonus rewards on critical success (roll 21)
+            val bonusMultiplier = if (roll == 21) 1.5 else 1.0
+
+            val combatRewards = CombatRewards(
+                experience = (baseXp * bonusMultiplier).toInt(),
+                gold = (baseGold * bonusMultiplier).toInt()
+            )
+
+            // Check for equipment drop (using EquipmentDatabase)
+            val droppedItem = com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getRandomDrop()
+
+            Pair(combatRewards, droppedItem)
+        } else {
+            Pair(null, null)
+        }
+
+        // Calculate gold penalty for death
+        val goldLost = if (outcome == CombatOutcome.DEATH) {
+            (character.gold / 2).toInt()
+        } else {
+            0
+        }
+
+        // Generate combat description
+        val description = generateCombatDescription(
+            characterName = character.name,
+            enemyName = enemy.name,
+            outcome = outcome,
+            roll = roll,
+            combatScore = combatScore,
+            isCritical = roll == 21 || roll == 1
+        )
+
+        return SimplifiedCombatResult(
+            outcome = outcome,
+            roll = roll,
+            combatScore = combatScore,
+            characterPower = characterPower,
+            enemyPower = enemyPower,
+            rewards = rewards,
+            goldLost = goldLost,
+            description = description,
+            droppedEquipment = droppedEquipment
+        )
+    }
+
+    /**
+     * Calculate overall power level for a combatant.
+     */
+    private fun calculatePower(
+        strength: Int,
+        intelligence: Int,
+        agility: Int,
+        vitality: Int,
+        level: Int
+    ): Double {
+        val avgStat = (strength + intelligence + agility + vitality) / 4.0
+        return avgStat + (level * 2)
+    }
+
+    /**
+     * Generate descriptive text for combat outcome using MessageProvider.
+     */
+    private fun generateCombatDescription(
+        characterName: String,
+        enemyName: String,
+        outcome: CombatOutcome,
+        roll: Int,
+        combatScore: Double,
+        isCritical: Boolean
+    ): String {
+        // Get fun, varied message from MessageProvider
+        val baseMessage = messageProvider.getCombatMessage(
+            outcome = outcome,
+            characterName = characterName,
+            enemyName = enemyName,
+            wasCritical = isCritical
+        )
+
+        // Append technical details for debugging/info
+        return "$baseMessage (Rolled: $roll, Score: ${"%.1f".format(combatScore)})"
+    }
+
+    /**
      * Calculate attack difficulty based on defender's level and agility.
      * Higher difficulty = harder to hit.
      */
@@ -365,6 +518,15 @@ enum class EnemyType {
 }
 
 /**
+ * Simplified combat outcome.
+ */
+enum class CombatOutcome {
+    WIN,    // Character wins, gains rewards
+    FLEE,   // Character escapes but gets no rewards
+    DEATH   // Character dies, respawns with gold penalty
+}
+
+/**
  * Result of a single attack in combat.
  */
 data class CombatResult(
@@ -408,4 +570,19 @@ data class CombatRewards(
     val experience: Int,
     val gold: Int,
     val items: List<String> = emptyList() // Future: loot drops
+)
+
+/**
+ * Result of a simplified combat encounter (single d21 roll).
+ */
+data class SimplifiedCombatResult(
+    val outcome: CombatOutcome,
+    val roll: Int,
+    val combatScore: Double,
+    val characterPower: Double,
+    val enemyPower: Double,
+    val rewards: CombatRewards?,
+    val goldLost: Int,
+    val description: String,
+    val droppedEquipment: com.watxaut.rolenonplayinggame.domain.model.Equipment? = null
 )

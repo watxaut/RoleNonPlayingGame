@@ -24,7 +24,7 @@ data class Character(
     // Current state
     val currentHp: Int,
     val maxHp: Int,
-    val currentLocation: String = "Heartlands - Starting Town",
+    val currentLocation: String = "heartlands_havenmoor", // Location ID (snake_case)
 
     // Personality (hidden from player initially)
     val personalityTraits: PersonalityTraits,
@@ -35,12 +35,12 @@ data class Character(
     // Resources
     val gold: Long = 0,
 
-    // Inventory and equipment (stored as JSON in database)
+    // Inventory and equipment
     val inventory: List<String> = emptyList(),
-    val equippedItems: Map<String, String> = emptyMap(),
+    val equipment: EquipmentLoadout = EquipmentLoadout(),
 
-    // Discovered locations
-    val discoveredLocations: List<String> = listOf("Heartlands - Starting Town"),
+    // Discovered locations (stored as location IDs)
+    val discoveredLocations: List<String> = listOf("heartlands_havenmoor"),
 
     // Active quests (stored as JSON)
     val activeQuests: List<String> = emptyList(),
@@ -92,10 +92,27 @@ data class Character(
     }
 
     /**
-     * Calculate max HP based on vitality
+     * Calculate max HP based on vitality (including equipment bonuses)
      */
     fun calculateMaxHp(): Int {
-        return 50 + (vitality * 10) + (level * 5)
+        val bonuses = equipment.getTotalBonuses()
+        val totalVit = vitality + bonuses.vitality
+        return 50 + (totalVit * 10) + (level * 5)
+    }
+
+    /**
+     * Get total stats including equipment bonuses.
+     */
+    fun getTotalStats(): CharacterStats {
+        val bonuses = equipment.getTotalBonuses()
+        return CharacterStats(
+            strength = strength + bonuses.strength,
+            intelligence = intelligence + bonuses.intelligence,
+            agility = agility + bonuses.agility,
+            luck = luck + bonuses.luck,
+            charisma = charisma + bonuses.charisma,
+            vitality = vitality + bonuses.vitality
+        )
     }
 
     companion object {

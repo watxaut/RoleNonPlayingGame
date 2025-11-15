@@ -21,11 +21,11 @@ data class Location(
          * Starting location - safe town in the Heartlands
          */
         fun startingTown() = Location(
-            id = "heartlands_starting_town",
-            name = "Willowdale Village",
+            id = "heartlands_havenmoor",
+            name = "Havenmoor",
             region = Region.HEARTLANDS,
-            description = "A peaceful village where many adventurers begin their journey. " +
-                    "The village elder welcomes all newcomers and offers guidance.",
+            description = "A peaceful town where many adventurers begin their journey. " +
+                    "The town elder welcomes all newcomers and offers guidance.",
             levelRange = 1..5,
             dangerLevel = 1,
             hasInn = true,

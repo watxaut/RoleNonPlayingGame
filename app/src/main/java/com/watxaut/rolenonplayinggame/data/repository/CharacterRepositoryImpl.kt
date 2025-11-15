@@ -78,7 +78,7 @@ class CharacterRepositoryImpl @Inject constructor(
                     jobClass = character.jobClass.name,
                     gold = character.gold,
                     inventory = toJsonArray(character.inventory),
-                    equippedItems = toJsonMap(character.equippedItems),
+                    equippedItems = toEquipmentJson(character.equipment),
                     discoveredLocations = toJsonArray(character.discoveredLocations),
                     activeQuests = toJsonArray(character.activeQuests),
                     createdAt = character.createdAt.toString(),
@@ -186,5 +186,14 @@ class CharacterRepositoryImpl @Inject constructor(
     private fun toJsonMap(map: Map<String, String>): String {
         if (map.isEmpty()) return "{}"
         return map.entries.joinToString(",", "{", "}") { "\"${it.key}\":\"${it.value}\"" }
+    }
+
+    /**
+     * Convert equipment loadout to JSON string for Supabase
+     */
+    private fun toEquipmentJson(equipment: com.watxaut.rolenonplayinggame.domain.model.EquipmentLoadout): String {
+        // For now, return empty JSON. Equipment will be handled separately
+        // TODO: Implement proper JSON serialization when equipment system is fully integrated
+        return "{}"
     }
 }

@@ -60,6 +60,7 @@ class GameViewModel @Inject constructor(
 
         characterObserverJob = viewModelScope.launch(Dispatchers.IO) {
             // Load character from repository
+            var isFirstLoad = true
             characterRepository.getCharacterByIdFlow(characterId)
                 .flowOn(Dispatchers.IO)
                 .collect { character ->
@@ -67,9 +68,13 @@ class GameViewModel @Inject constructor(
                     if (character != null) {
                         _uiState.update { it.copy(character = character, isLoading = false) }
 
-                        // Start decision loop if not already running
-                        if (decisionLoopJob == null || decisionLoopJob?.isActive == false) {
-                            startDecisionLoop(character)
+                        // ONLY start decision loop on first load, not on every character update
+                        // The decision loop will handle its own character updates
+                        if (isFirstLoad) {
+                            isFirstLoad = false
+                            if (decisionLoopJob == null || decisionLoopJob?.isActive == false) {
+                                startDecisionLoop(character)
+                            }
                         }
                     } else {
                         _uiState.update {
@@ -105,8 +110,8 @@ class GameViewModel @Inject constructor(
 
             while (true) {
                 try {
-                    // Random delay between 10-30 seconds (slower progression)
-                    val delayMs = Random.nextLong(10000, 30000)
+                    // Random delay between 2-8 seconds (faster progression)
+                    val delayMs = Random.nextLong(2000, 8000)
                     delay(delayMs)
 
                     // Build decision context
@@ -138,9 +143,9 @@ class GameViewModel @Inject constructor(
                             )
                         }
 
-                        // Check for level up
-                        if (character.experience >= character.level * 100) {
-                            levelUpCharacter(character)
+                        // Check for level up and update local character variable
+                        if (character.shouldLevelUp()) {
+                            character = levelUpCharacter(character)
                         }
                     }.onFailure { error ->
                         _uiState.update {
@@ -174,12 +179,15 @@ class GameViewModel @Inject constructor(
         // Future weeks will expand this with real location data, quests, etc.
 
         val nearbyLocations = when (character.currentLocation) {
-            "Willowdale Village" -> listOf("Meadowbrook Fields")
-            "Meadowbrook Fields" -> listOf("Willowdale Village", "Whispering Woods")
-            else -> listOf("Willowdale Village")
+            "heartlands_havenmoor" -> listOf("heartlands_meadowbrook_fields", "heartlands_millers_rest")
+            "heartlands_meadowbrook_fields" -> listOf("heartlands_havenmoor", "heartlands_whispering_grove")
+            "heartlands_whispering_grove" -> listOf("heartlands_meadowbrook_fields", "heartlands_broken_bridge")
+            "heartlands_millers_rest" -> listOf("heartlands_havenmoor")
+            "heartlands_broken_bridge" -> listOf("heartlands_whispering_grove")
+            else -> listOf("heartlands_havenmoor") // Default: return to starting town
         }
 
-        val hasInn = character.currentLocation == "Willowdale Village"
+        val hasInn = character.currentLocation == "heartlands_havenmoor" // Only Havenmoor (the main town) has an inn
 
         return DecisionContext(
             currentLocation = character.currentLocation,
@@ -195,44 +203,48 @@ class GameViewModel @Inject constructor(
 
     /**
      * Handle character level up.
+     * Returns the leveled-up character to update the decision loop's local variable.
      */
-    private fun levelUpCharacter(character: Character) {
+    private suspend fun levelUpCharacter(character: Character): Character {
+        // Auto-allocate stat points based on job class
+        val statIncrease = character.jobClass.statPriorities
+
+        val leveledUpCharacter = character.copy(
+            level = character.level + 1,
+            experience = 0, // Reset XP
+            strength = character.strength + if (statIncrease.contains("STR")) 2 else 1,
+            intelligence = character.intelligence + if (statIncrease.contains("INT")) 2 else 1,
+            agility = character.agility + if (statIncrease.contains("AGI")) 2 else 1,
+            luck = character.luck + if (statIncrease.contains("LUK")) 2 else 1,
+            charisma = character.charisma + if (statIncrease.contains("CHA")) 2 else 1,
+            vitality = character.vitality + if (statIncrease.contains("VIT")) 2 else 1
+        )
+
+        // Calculate new max HP based on new vitality and level
+        val newMaxHp = leveledUpCharacter.calculateMaxHp()
+        val fullHealCharacter = leveledUpCharacter.copy(
+            maxHp = newMaxHp,
+            currentHp = newMaxHp // Full heal on level up
+        )
+
+        characterRepository.updateCharacter(fullHealCharacter)
+
+        _uiState.update {
+            it.copy(
+                character = fullHealCharacter,
+                currentAction = "LEVEL UP! Reached level ${fullHealCharacter.level}!",
+                showLevelUpAnimation = true
+            )
+        }
+
+        // Launch animation dismissal in background (don't wait for it)
         viewModelScope.launch {
-            // Auto-allocate stat points based on job class
-            val statIncrease = character.jobClass.statPriorities
-
-            val leveledUpCharacter = character.copy(
-                level = character.level + 1,
-                experience = 0, // Reset XP
-                strength = character.strength + if (statIncrease.contains("STR")) 2 else 1,
-                intelligence = character.intelligence + if (statIncrease.contains("INT")) 2 else 1,
-                agility = character.agility + if (statIncrease.contains("AGI")) 2 else 1,
-                luck = character.luck + if (statIncrease.contains("LUK")) 2 else 1,
-                charisma = character.charisma + if (statIncrease.contains("CHA")) 2 else 1,
-                vitality = character.vitality + if (statIncrease.contains("VIT")) 2 else 1
-            )
-
-            // Calculate new max HP based on new vitality and level
-            val newMaxHp = leveledUpCharacter.calculateMaxHp()
-            val fullHealCharacter = leveledUpCharacter.copy(
-                maxHp = newMaxHp,
-                currentHp = newMaxHp // Full heal on level up
-            )
-
-            characterRepository.updateCharacter(fullHealCharacter)
-
-            _uiState.update {
-                it.copy(
-                    character = fullHealCharacter,
-                    currentAction = "LEVEL UP! Reached level ${fullHealCharacter.level}!",
-                    showLevelUpAnimation = true
-                )
-            }
-
-            // Reset level up animation after delay
             delay(3000)
             _uiState.update { it.copy(showLevelUpAnimation = false) }
         }
+
+        // Return the leveled-up character immediately
+        return fullHealCharacter
     }
 
     /**

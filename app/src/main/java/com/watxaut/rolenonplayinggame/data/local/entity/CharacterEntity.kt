@@ -3,6 +3,7 @@ package com.watxaut.rolenonplayinggame.data.local.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.watxaut.rolenonplayinggame.domain.model.Character
+import com.watxaut.rolenonplayinggame.domain.model.EquipmentLoadout
 import com.watxaut.rolenonplayinggame.domain.model.JobClass
 import com.watxaut.rolenonplayinggame.domain.model.PersonalityTraits
 import java.time.Instant
@@ -48,7 +49,7 @@ data class CharacterEntity(
 
     // JSON stored fields (Room will store these as strings)
     val inventory: String,  // JSON array
-    val equippedItems: String,  // JSON object
+    val equipment: String,  // JSON object for EquipmentLoadout
     val discoveredLocations: String,  // JSON array
     val activeQuests: String,  // JSON array
 
@@ -86,7 +87,7 @@ data class CharacterEntity(
             jobClass = JobClass.valueOf(jobClass),
             gold = gold,
             inventory = parseJsonArray(inventory),
-            equippedItems = parseJsonMap(equippedItems),
+            equipment = parseEquipmentLoadout(equipment),
             discoveredLocations = parseJsonArray(discoveredLocations),
             activeQuests = parseJsonArray(activeQuests),
             createdAt = Instant.ofEpochMilli(createdAt),
@@ -120,6 +121,13 @@ data class CharacterEntity(
         return result
     }
 
+    private fun parseEquipmentLoadout(json: String): EquipmentLoadout {
+        if (json.isEmpty() || json == "{}") return EquipmentLoadout()
+        // For now, return empty loadout. Equipment will be handled separately
+        // TODO: Implement proper JSON parsing when equipment system is fully integrated
+        return EquipmentLoadout()
+    }
+
     companion object {
         /**
          * Convert domain model to entity
@@ -149,7 +157,7 @@ data class CharacterEntity(
                 jobClass = character.jobClass.name,
                 gold = character.gold,
                 inventory = toJsonArray(character.inventory),
-                equippedItems = toJsonMap(character.equippedItems),
+                equipment = toEquipmentJson(character.equipment),
                 discoveredLocations = toJsonArray(character.discoveredLocations),
                 activeQuests = toJsonArray(character.activeQuests),
                 createdAt = character.createdAt.toEpochMilli(),
@@ -165,6 +173,12 @@ data class CharacterEntity(
         private fun toJsonMap(map: Map<String, String>): String {
             if (map.isEmpty()) return "{}"
             return map.entries.joinToString(",", "{", "}") { "\"${it.key}\":\"${it.value}\"" }
+        }
+
+        private fun toEquipmentJson(equipment: EquipmentLoadout): String {
+            // For now, return empty JSON. Equipment will be handled separately
+            // TODO: Implement proper JSON serialization when equipment system is fully integrated
+            return "{}"
         }
     }
 }

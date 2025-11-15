@@ -29,6 +29,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.watxaut.rolenonplayinggame.core.lifecycle.OfflineSimulationState
 import com.watxaut.rolenonplayinggame.domain.model.Character
+import com.watxaut.rolenonplayinggame.presentation.map.getLocationDisplayName
 import com.watxaut.rolenonplayinggame.presentation.summary.OfflineSummaryScreen
 
 /**
@@ -225,7 +226,7 @@ private fun CharacterListItem(
 
             // Location
             Text(
-                text = "📍 ${character.currentLocation}",
+                text = "📍 ${getLocationDisplayName(character.currentLocation)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
