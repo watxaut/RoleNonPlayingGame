@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.watxaut.rolenonplayinggame.core.ai.BasicDecisionEngine
 import com.watxaut.rolenonplayinggame.core.ai.DecisionContext
+import com.watxaut.rolenonplayinggame.data.repository.PrincipalMissionsRepository
 import com.watxaut.rolenonplayinggame.domain.model.Activity
 import com.watxaut.rolenonplayinggame.domain.model.Character
 import com.watxaut.rolenonplayinggame.domain.repository.ActivityRepository
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
+import com.watxaut.rolenonplayinggame.domain.repository.MissionProgressRepository
 import com.watxaut.rolenonplayinggame.domain.usecase.ExecuteDecisionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +38,7 @@ import kotlin.random.Random
 class GameViewModel @Inject constructor(
     private val characterRepository: CharacterRepository,
     private val activityRepository: ActivityRepository,
+    private val missionProgressRepository: MissionProgressRepository,
     private val executeDecisionUseCase: ExecuteDecisionUseCase,
     private val decisionEngine: BasicDecisionEngine
 ) : ViewModel() {
@@ -75,6 +78,8 @@ class GameViewModel @Inject constructor(
                             if (decisionLoopJob == null || decisionLoopJob?.isActive == false) {
                                 startDecisionLoop(character)
                             }
+                            // Load mission progress on first load
+                            loadMissionProgress(character)
                         }
                     } else {
                         _uiState.update {
@@ -134,12 +139,7 @@ class GameViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 character = character,
-                                currentAction = outcome.activity.description,
-                                combatLog = if (outcome.combatLog.isNotEmpty()) {
-                                    outcome.combatLog
-                                } else {
-                                    emptyList()
-                                }
+                                currentAction = outcome.activity.description
                             )
                         }
 
@@ -268,6 +268,74 @@ class GameViewModel @Inject constructor(
         val character = _uiState.value.character
         if (character != null) {
             startDecisionLoop(character)
+        }
+    }
+
+    /**
+     * Load and format principal mission progress for display
+     */
+    private fun loadMissionProgress(character: Character) {
+        viewModelScope.launch(Dispatchers.IO) {
+            character.activePrincipalMissionId?.let { missionId ->
+                // Get mission definition
+                val mission = PrincipalMissionsRepository.getMissionById(missionId)
+
+                if (mission != null) {
+                    // Get progress from Supabase
+                    val progressResult = missionProgressRepository.getActivePrincipalMission(character.id)
+
+                    progressResult.onSuccess { progress ->
+                        val missionText = if (progress != null) {
+                            val stepsComplete = progress.completedSteps.size
+                            val totalSteps = mission.steps.size
+                            val progressPercentage = ((stepsComplete + if (progress.bossDefeated) 1 else 0).toFloat() /
+                                                      (totalSteps + 1) * 100).toInt()
+
+                            buildString {
+                                appendLine("📜 ${mission.name}")
+                                appendLine()
+                                appendLine(mission.description)
+                                appendLine()
+                                appendLine("Progress: $stepsComplete / $totalSteps steps ($progressPercentage%)")
+
+                                if (progress.bossDefeated) {
+                                    appendLine("✅ Boss Defeated!")
+                                } else if (progress.bossEncountered) {
+                                    appendLine("⚔️ Boss Encountered - Not Yet Defeated")
+                                } else if (stepsComplete == totalSteps) {
+                                    appendLine("🎯 All steps complete! Boss battle imminent...")
+                                }
+
+                                appendLine()
+                                appendLine("Region: ${mission.loreRegion.displayName}")
+                            }
+                        } else {
+                            // Mission assigned but no progress yet
+                            buildString {
+                                appendLine("📜 ${mission.name}")
+                                appendLine()
+                                appendLine(mission.description)
+                                appendLine()
+                                appendLine("Progress: 0 / ${mission.steps.size} steps (0%)")
+                                appendLine()
+                                appendLine("Region: ${mission.loreRegion.displayName}")
+                            }
+                        }
+
+                        _uiState.update { it.copy(principalMissionProgress = missionText) }
+                    }
+                } else {
+                    // Mission ID exists but mission not found in repository
+                    _uiState.update {
+                        it.copy(principalMissionProgress = "Mission ID: $missionId (details not available)")
+                    }
+                }
+            } ?: run {
+                // No mission assigned
+                _uiState.update {
+                    it.copy(principalMissionProgress = null)
+                }
+            }
         }
     }
 

@@ -94,7 +94,10 @@ enum class Rarity(
     val color: Long          // Color for UI display
 ) {
     COMMON("Common", 0.09, 0xFFFFFFFF),      // 9% chance (white)
-    RARE("Rare", 0.01, 0xFFFFD700);          // 1% chance (gold)
+    UNCOMMON("Uncommon", 0.05, 0xFF00FF00),  // 5% chance (green)
+    RARE("Rare", 0.01, 0xFF0000FF),          // 1% chance (blue)
+    EPIC("Epic", 0.005, 0xFFFF00FF),         // 0.5% chance (purple)
+    LEGENDARY("Legendary", 0.001, 0xFFFFD700); // 0.1% chance (gold)
 
     fun getColorInt(): Int {
         return color.toInt()

@@ -3,9 +3,11 @@ package com.watxaut.rolenonplayinggame.di
 import com.watxaut.rolenonplayinggame.data.repository.ActivityRepositoryImpl
 import com.watxaut.rolenonplayinggame.data.repository.AuthRepositoryImpl
 import com.watxaut.rolenonplayinggame.data.repository.CharacterRepositoryImpl
+import com.watxaut.rolenonplayinggame.data.repository.MissionProgressRepositoryImpl
 import com.watxaut.rolenonplayinggame.domain.repository.ActivityRepository
 import com.watxaut.rolenonplayinggame.domain.repository.AuthRepository
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
+import com.watxaut.rolenonplayinggame.domain.repository.MissionProgressRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -36,4 +38,10 @@ abstract class RepositoryModule {
     abstract fun bindActivityRepository(
         impl: ActivityRepositoryImpl
     ): ActivityRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindMissionProgressRepository(
+        impl: MissionProgressRepositoryImpl
+    ): MissionProgressRepository
 }

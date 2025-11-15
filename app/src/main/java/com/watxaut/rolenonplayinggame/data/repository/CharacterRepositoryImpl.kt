@@ -96,6 +96,9 @@ class CharacterRepositoryImpl @Inject constructor(
                     equippedItems = toEquipmentJson(character.equipment),
                     discoveredLocations = toJsonArray(character.discoveredLocations),
                     activeQuests = toJsonArray(character.activeQuests),
+                    activePrincipalMissionId = character.activePrincipalMissionId,
+                    principalMissionStartedAt = character.principalMissionStartedAt?.toString(),
+                    principalMissionCompletedCount = character.principalMissionCompletedCount,
                     createdAt = character.createdAt.toString(),
                     lastActiveAt = character.lastActiveAt.toString()
                 )
@@ -121,7 +124,54 @@ class CharacterRepositoryImpl @Inject constructor(
             val entity = CharacterEntity.fromDomainModel(character)
             characterDao.updateCharacter(entity)
 
-            // TODO: Sync to Supabase when remote sync is implemented
+            // Sync to Supabase
+            try {
+                val supabaseData = SupabaseCharacterDto(
+                    id = character.id,
+                    userId = character.userId,
+                    name = character.name,
+                    level = character.level,
+                    experience = character.experience,
+                    strength = character.strength,
+                    intelligence = character.intelligence,
+                    agility = character.agility,
+                    luck = character.luck,
+                    charisma = character.charisma,
+                    vitality = character.vitality,
+                    currentHp = character.currentHp,
+                    maxHp = character.maxHp,
+                    currentLocation = character.currentLocation,
+                    personalityCourage = character.personalityTraits.courage,
+                    personalityGreed = character.personalityTraits.greed,
+                    personalityCuriosity = character.personalityTraits.curiosity,
+                    personalityAggression = character.personalityTraits.aggression,
+                    personalitySocial = character.personalityTraits.social,
+                    personalityImpulsive = character.personalityTraits.impulsive,
+                    jobClass = character.jobClass.name,
+                    gold = character.gold,
+                    inventory = toJsonArray(character.inventory),
+                    equippedItems = toEquipmentJson(character.equipment),
+                    discoveredLocations = toJsonArray(character.discoveredLocations),
+                    activeQuests = toJsonArray(character.activeQuests),
+                    activePrincipalMissionId = character.activePrincipalMissionId,
+                    principalMissionStartedAt = character.principalMissionStartedAt?.toString(),
+                    principalMissionCompletedCount = character.principalMissionCompletedCount,
+                    createdAt = character.createdAt.toString(),
+                    lastActiveAt = character.lastActiveAt.toString()
+                )
+
+                logDebug("Syncing character update to Supabase")
+                supabaseClient.from("characters")
+                    .update(supabaseData) {
+                        filter {
+                            eq("id", character.id)
+                        }
+                    }
+                logDebug("Character update synced to Supabase")
+            } catch (e: Exception) {
+                logError("Failed to sync character update to Supabase, but saved locally", e)
+                // Don't fail the entire operation
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -133,7 +183,20 @@ class CharacterRepositoryImpl @Inject constructor(
         return try {
             characterDao.deleteCharacterById(characterId)
 
-            // TODO: Delete from Supabase when remote sync is implemented
+            // Delete from Supabase
+            try {
+                logDebug("Deleting character from Supabase: $characterId")
+                supabaseClient.from("characters")
+                    .delete {
+                        filter {
+                            eq("id", characterId)
+                        }
+                    }
+                logDebug("Character deleted from Supabase")
+            } catch (e: Exception) {
+                logError("Failed to delete character from Supabase, but deleted locally", e)
+                // Don't fail the entire operation
+            }
 
             Result.success(Unit)
         } catch (e: Exception) {

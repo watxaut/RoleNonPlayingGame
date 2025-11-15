@@ -13,10 +13,11 @@ import com.watxaut.rolenonplayinggame.data.local.entity.CharacterEntity
  * Version history:
  * - v1: Initial database with CharacterEntity
  * - v2: Added ActivityEntity for activity logging (Week 3)
+ * - v3: Added mission tracking fields to CharacterEntity (activePrincipalMissionId, principalMissionStartedAt, principalMissionCompletedCount)
  */
 @Database(
     entities = [CharacterEntity::class, ActivityEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class GameDatabase : RoomDatabase() {

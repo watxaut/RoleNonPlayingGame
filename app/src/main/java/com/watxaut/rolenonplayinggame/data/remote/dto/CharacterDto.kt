@@ -87,6 +87,15 @@ data class SupabaseCharacterDto(
     @SerialName("active_quests")
     val activeQuests: String,
 
+    @SerialName("active_principal_mission_id")
+    val activePrincipalMissionId: String? = null,
+
+    @SerialName("principal_mission_started_at")
+    val principalMissionStartedAt: String? = null,
+
+    @SerialName("principal_mission_completed_count")
+    val principalMissionCompletedCount: Int = 0,
+
     @SerialName("created_at")
     val createdAt: String,
 

@@ -45,6 +45,11 @@ data class Character(
     // Active quests (stored as JSON)
     val activeQuests: List<String> = emptyList(),
 
+    // Mission tracking
+    val activePrincipalMissionId: String? = null,
+    val principalMissionStartedAt: Instant? = null,
+    val principalMissionCompletedCount: Int = 0,
+
     // Timestamps
     val createdAt: Instant = Instant.now(),
     val lastActiveAt: Instant = Instant.now()

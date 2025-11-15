@@ -53,6 +53,11 @@ data class CharacterEntity(
     val discoveredLocations: String,  // JSON array
     val activeQuests: String,  // JSON array
 
+    // Mission tracking
+    val activePrincipalMissionId: String? = null,
+    val principalMissionStartedAt: Long? = null,
+    val principalMissionCompletedCount: Int = 0,
+
     // Timestamps
     val createdAt: Long,  // Unix timestamp
     val lastActiveAt: Long  // Unix timestamp
@@ -90,6 +95,9 @@ data class CharacterEntity(
             equipment = parseEquipmentLoadout(equipment),
             discoveredLocations = parseJsonArray(discoveredLocations),
             activeQuests = parseJsonArray(activeQuests),
+            activePrincipalMissionId = activePrincipalMissionId,
+            principalMissionStartedAt = principalMissionStartedAt?.let { Instant.ofEpochMilli(it) },
+            principalMissionCompletedCount = principalMissionCompletedCount,
             createdAt = Instant.ofEpochMilli(createdAt),
             lastActiveAt = Instant.ofEpochMilli(lastActiveAt)
         )
@@ -194,6 +202,9 @@ data class CharacterEntity(
                 equipment = toEquipmentJson(character.equipment),
                 discoveredLocations = toJsonArray(character.discoveredLocations),
                 activeQuests = toJsonArray(character.activeQuests),
+                activePrincipalMissionId = character.activePrincipalMissionId,
+                principalMissionStartedAt = character.principalMissionStartedAt?.toEpochMilli(),
+                principalMissionCompletedCount = character.principalMissionCompletedCount,
                 createdAt = character.createdAt.toEpochMilli(),
                 lastActiveAt = character.lastActiveAt.toEpochMilli()
             )

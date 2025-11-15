@@ -51,6 +51,26 @@ object DatabaseModule {
         }
     }
 
+    /**
+     * Migration from version 2 to 3: Added mission tracking fields to characters table
+     */
+    private val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(database: SupportSQLiteDatabase) {
+            // Add mission tracking columns to characters table
+            database.execSQL("""
+                ALTER TABLE characters ADD COLUMN activePrincipalMissionId TEXT DEFAULT NULL
+            """.trimIndent())
+
+            database.execSQL("""
+                ALTER TABLE characters ADD COLUMN principalMissionStartedAt INTEGER DEFAULT NULL
+            """.trimIndent())
+
+            database.execSQL("""
+                ALTER TABLE characters ADD COLUMN principalMissionCompletedCount INTEGER NOT NULL DEFAULT 0
+            """.trimIndent())
+        }
+    }
+
     @Provides
     @Singleton
     fun provideGameDatabase(
@@ -61,7 +81,7 @@ object DatabaseModule {
             GameDatabase::class.java,
             GameDatabase.DATABASE_NAME
         )
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
             // Only fall back to destructive migration in debug builds for development
             .apply {
                 if (com.watxaut.rolenonplayinggame.BuildConfig.DEBUG) {

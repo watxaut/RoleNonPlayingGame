@@ -86,8 +86,8 @@ sealed class SecondaryWinCondition {
         is AccumulateGold -> character.gold >= goldAmount
         is EquipRarity -> context.hasEquippedRarity(rarity)
         is UseStat -> character.getTotalStats().getStat(stat) >= minimumValue
-        is SurviveDays -> context.getDaysSurvived() >= days
-        is CriticalHits -> context.getCriticalHitCount() >= count
+        is SurviveDays -> context.daysSurvived >= days
+        is CriticalHits -> context.criticalHits >= count
         is TradeWithNPC -> context.getTradeCount(npcType) >= times
     }
 }
@@ -115,10 +115,6 @@ data class MissionContext(
     fun hasEquippedRarity(rarity: Rarity): Boolean {
         return equippedItems.any { it.rarity == rarity }
     }
-
-    fun getDaysSurvived(): Int = daysSurvived
-
-    fun getCriticalHitCount(): Int = criticalHits
 
     fun getTradeCount(npcType: String): Int {
         return npcTrades[npcType] ?: 0

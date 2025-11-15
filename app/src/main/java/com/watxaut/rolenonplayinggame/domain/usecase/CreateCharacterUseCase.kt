@@ -7,6 +7,8 @@ import com.watxaut.rolenonplayinggame.domain.model.JobClass
 import com.watxaut.rolenonplayinggame.domain.model.PersonalityTraits
 import com.watxaut.rolenonplayinggame.domain.model.PrincipalMissionProgress
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
+import com.watxaut.rolenonplayinggame.domain.repository.MissionProgressRepository
+import java.time.Instant
 import javax.inject.Inject
 
 /**
@@ -14,7 +16,8 @@ import javax.inject.Inject
  * Validates input, generates personality traits, assigns principal mission, and persists the character.
  */
 class CreateCharacterUseCase @Inject constructor(
-    private val characterRepository: CharacterRepository
+    private val characterRepository: CharacterRepository,
+    private val missionProgressRepository: MissionProgressRepository
 ) {
 
     /**
@@ -51,20 +54,19 @@ class CreateCharacterUseCase @Inject constructor(
             return Result.failure(IllegalArgumentException("All stats must be at least 1"))
         }
 
-        // Create character with generated personality traits
+        // Assign a random principal mission for the character's job class
+        val assignedMission = PrincipalMissionsRepository.getRandomMissionForJobClass(jobClass)
+
+        // Create character with generated personality traits and assigned mission
         val character = Character.create(
             userId = userId,
             name = name,
             jobClass = jobClass,
             initialStats = stats.toMap()
+        ).copy(
+            activePrincipalMissionId = assignedMission?.id,
+            principalMissionStartedAt = assignedMission?.let { Instant.now() }
         )
-
-        // Assign a random principal mission for the character's job class
-        val assignedMission = PrincipalMissionsRepository.getRandomMissionForJobClass(jobClass)
-
-        // TODO: When database is updated, persist the mission assignment
-        // For now, the mission will be assigned when DB schema is implemented
-        // The mission ID would be stored as: assignedMission?.id
 
         // Log mission assignment for development
         assignedMission?.let { mission ->
@@ -74,8 +76,25 @@ class CreateCharacterUseCase @Inject constructor(
             println("   Steps: ${mission.steps.size}")
         }
 
-        // Persist to repository
-        return characterRepository.createCharacter(character)
+        // Persist character to repository
+        val characterResult = characterRepository.createCharacter(character)
+        if (characterResult.isFailure) {
+            return characterResult
+        }
+
+        // Create mission progress entry in Supabase
+        assignedMission?.let { mission ->
+            val missionResult = missionProgressRepository.assignPrincipalMission(
+                characterId = character.id,
+                missionId = mission.id
+            )
+            if (missionResult.isFailure) {
+                println("⚠️ Failed to assign mission progress in Supabase: ${missionResult.exceptionOrNull()?.message}")
+                // Don't fail character creation if mission assignment fails
+            }
+        }
+
+        return characterResult
     }
 
     /**
