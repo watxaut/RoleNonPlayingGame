@@ -598,11 +598,9 @@ object PrincipalMissionsRepository {
             // Mages
             MAGE_MISSION_1,
             MAGE_MISSION_2,
-            MAGE_MISSION_3,
-
-            // TODO: Add remaining missions for other classes
-            // This file is getting long - will continue in next part
-        )
+            MAGE_MISSION_3
+        ) + PrincipalMissionsRepository2.getAllAdditionalMissions() +
+                PrincipalMissionsRepository3.getAllRemainingMissions()
     }
 
     /**
