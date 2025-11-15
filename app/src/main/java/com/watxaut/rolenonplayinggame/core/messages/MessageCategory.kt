@@ -19,7 +19,10 @@ enum class MessageCategory {
     LOOT_EXCELLENT,         // Great loot found
     LOOT_GOOD,              // Decent loot
     LOOT_POOR,              // Minimal loot
-    LOOT_NOTHING            // No loot found
+    LOOT_NOTHING,           // No loot found
+
+    // Exploration
+    EXPLORATION_VISIT       // Visiting a location without finding loot
 }
 
 /**

@@ -102,7 +102,7 @@ class ExecuteDecisionUseCase @Inject constructor(
                 character.copy(
                     currentHp = character.maxHp / 2,
                     gold = character.gold - combatResult.goldLost,
-                    currentLocation = "Havenmoor" // Respawn in starting town
+                    currentLocation = "heartlands_havenmoor" // Respawn in starting town (Havenmoor)
                 )
             }
         }
@@ -136,7 +136,7 @@ class ExecuteDecisionUseCase @Inject constructor(
                     }
                 }
                 CombatOutcome.DEATH -> {
-                    appendLine("Lost ${combatResult.goldLost} gold and respawned in Havenmoor.")
+                    appendLine("Lost ${combatResult.goldLost} gold and respawned in ${getLocationDisplayName("heartlands_havenmoor")}.")
                 }
                 CombatOutcome.FLEE -> {
                     appendLine("Escaped without rewards or penalties.")
@@ -184,18 +184,10 @@ class ExecuteDecisionUseCase @Inject constructor(
 
         if (actionRoll < 0.70) {
             // 70% - Just visiting/sightseeing (no rewards)
-            val visitMessages = listOf(
-                "${character.name} visits $locationName and takes in the sights.",
-                "${character.name} strolls through $locationName, enjoying the atmosphere.",
-                "${character.name} explores $locationName, admiring the scenery.",
-                "${character.name} wanders around $locationName, observing the locals.",
-                "${character.name} passes through $locationName without incident.",
-                "${character.name} relaxes in $locationName for a while.",
-                "${character.name} explores the streets of $locationName.",
-                "${character.name} visits the local landmarks in $locationName."
+            val description = messageProvider.getExplorationVisitMessage(
+                characterName = character.name,
+                locationName = locationName
             )
-
-            val description = visitMessages.random()
 
             val updatedCharacter = character.copy(currentLocation = targetLocation)
 
@@ -345,8 +337,8 @@ class ExecuteDecisionUseCase @Inject constructor(
      * Execute flee decision.
      */
     private fun executeFlee(character: Character, decision: Decision.Flee): DecisionOutcome {
-        // Flee to safety (starting town)
-        val safeLocation = "Willowdale Village"
+        // Flee to safety (starting town - Havenmoor)
+        val safeLocation = "heartlands_havenmoor"
 
         val updatedCharacter = character.copy(currentLocation = safeLocation)
 
@@ -354,7 +346,7 @@ class ExecuteDecisionUseCase @Inject constructor(
             characterId = character.id,
             timestamp = Instant.now(),
             type = ActivityType.TRAVEL,
-            description = "Fled to safety in $safeLocation. Reason: ${decision.reason}",
+            description = "Fled to safety in ${getLocationDisplayName(safeLocation)}. Reason: ${decision.reason}",
             isMajorEvent = false,
             metadata = mapOf("reason" to decision.reason)
         )

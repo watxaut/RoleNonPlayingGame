@@ -29,7 +29,7 @@ object ItemDatabase {
             levelRequirement = 1,
             strength = 2,
             goldValue = 5,
-            equipmentSlot = EquipmentSlot.WEAPON
+            equipmentSlot = EquipmentSlot.WEAPON_MAIN
         ),
         Item(
             id = "weapon_wooden_staff",
@@ -40,7 +40,7 @@ object ItemDatabase {
             levelRequirement = 1,
             intelligence = 3,
             goldValue = 6,
-            equipmentSlot = EquipmentSlot.WEAPON
+            equipmentSlot = EquipmentSlot.WEAPON_MAIN
         ),
         Item(
             id = "weapon_hunters_bow",
@@ -51,7 +51,7 @@ object ItemDatabase {
             levelRequirement = 1,
             agility = 3,
             goldValue = 8,
-            equipmentSlot = EquipmentSlot.WEAPON
+            equipmentSlot = EquipmentSlot.WEAPON_MAIN
         ),
 
         // Uncommon Weapons
@@ -65,7 +65,7 @@ object ItemDatabase {
             strength = 5,
             vitality = 1,
             goldValue = 25,
-            equipmentSlot = EquipmentSlot.WEAPON
+            equipmentSlot = EquipmentSlot.WEAPON_MAIN
         ),
         Item(
             id = "weapon_apprentice_wand",
@@ -76,7 +76,7 @@ object ItemDatabase {
             levelRequirement = 5,
             intelligence = 6,
             goldValue = 30,
-            equipmentSlot = EquipmentSlot.WEAPON
+            equipmentSlot = EquipmentSlot.WEAPON_MAIN
         ),
 
         // Rare Weapons
@@ -90,7 +90,7 @@ object ItemDatabase {
             strength = 10,
             charisma = 2,
             goldValue = 150,
-            equipmentSlot = EquipmentSlot.WEAPON
+            equipmentSlot = EquipmentSlot.WEAPON_MAIN
         ),
         Item(
             id = "weapon_heartwood_staff",
@@ -102,7 +102,7 @@ object ItemDatabase {
             intelligence = 12,
             vitality = 3,
             goldValue = 200,
-            equipmentSlot = EquipmentSlot.WEAPON,
+            equipmentSlot = EquipmentSlot.WEAPON_MAIN,
             flavorText = "The forest remembers."
         ),
 
@@ -118,7 +118,7 @@ object ItemDatabase {
             intelligence = 8,
             agility = 4,
             goldValue = 800,
-            equipmentSlot = EquipmentSlot.WEAPON,
+            equipmentSlot = EquipmentSlot.WEAPON_MAIN,
             flavorText = "Cold as the heart of winter."
         ),
         Item(
@@ -132,7 +132,7 @@ object ItemDatabase {
             agility = 6,
             luck = 4,
             goldValue = 1000,
-            equipmentSlot = EquipmentSlot.WEAPON,
+            equipmentSlot = EquipmentSlot.WEAPON_MAIN,
             flavorText = "Thunder answers the call."
         ),
 
@@ -148,7 +148,7 @@ object ItemDatabase {
             vitality = 10,
             charisma = 5,
             goldValue = 5000,
-            equipmentSlot = EquipmentSlot.WEAPON,
+            equipmentSlot = EquipmentSlot.WEAPON_MAIN,
             flavorText = "When the world shattered, this blade was born from the chaos."
         ),
         Item(
@@ -162,7 +162,7 @@ object ItemDatabase {
             intelligence = 18,
             agility = 10,
             goldValue = 4500,
-            equipmentSlot = EquipmentSlot.WEAPON,
+            equipmentSlot = EquipmentSlot.WEAPON_MAIN,
             flavorText = "The sea knows no master, save one."
         )
     )
@@ -180,7 +180,7 @@ object ItemDatabase {
             levelRequirement = 1,
             vitality = 2,
             goldValue = 5,
-            equipmentSlot = EquipmentSlot.CHEST
+            equipmentSlot = EquipmentSlot.ARMOR
         ),
         Item(
             id = "armor_cloth_robe",
@@ -191,7 +191,7 @@ object ItemDatabase {
             levelRequirement = 1,
             intelligence = 2,
             goldValue = 6,
-            equipmentSlot = EquipmentSlot.CHEST
+            equipmentSlot = EquipmentSlot.ARMOR
         ),
 
         // Uncommon Armor
@@ -205,7 +205,7 @@ object ItemDatabase {
             vitality = 5,
             strength = 2,
             goldValue = 40,
-            equipmentSlot = EquipmentSlot.CHEST
+            equipmentSlot = EquipmentSlot.ARMOR
         ),
         Item(
             id = "armor_enchanted_robes",
@@ -217,7 +217,7 @@ object ItemDatabase {
             intelligence = 6,
             vitality = 2,
             goldValue = 50,
-            equipmentSlot = EquipmentSlot.CHEST
+            equipmentSlot = EquipmentSlot.ARMOR
         ),
 
         // Rare Armor
@@ -231,7 +231,7 @@ object ItemDatabase {
             vitality = 10,
             agility = 5,
             goldValue = 250,
-            equipmentSlot = EquipmentSlot.CHEST
+            equipmentSlot = EquipmentSlot.ARMOR
         ),
 
         // Epic Armor
@@ -245,7 +245,7 @@ object ItemDatabase {
             vitality = 20,
             strength = 8,
             goldValue = 1200,
-            equipmentSlot = EquipmentSlot.CHEST,
+            equipmentSlot = EquipmentSlot.ARMOR,
             flavorText = "The dragon's fury, made defense."
         ),
 
@@ -261,7 +261,7 @@ object ItemDatabase {
             strength = 12,
             intelligence = 12,
             goldValue = 10000,
-            equipmentSlot = EquipmentSlot.CHEST,
+            equipmentSlot = EquipmentSlot.ARMOR,
             flavorText = "While this armor stands, Havenmoor shall never fall."
         )
     )
@@ -279,7 +279,7 @@ object ItemDatabase {
             levelRequirement = 5,
             luck = 3,
             goldValue = 30,
-            equipmentSlot = EquipmentSlot.RING
+            equipmentSlot = EquipmentSlot.ACCESSORY
         ),
         Item(
             id = "accessory_scholars_pendant",
@@ -290,7 +290,7 @@ object ItemDatabase {
             levelRequirement = 5,
             intelligence = 4,
             goldValue = 35,
-            equipmentSlot = EquipmentSlot.AMULET
+            equipmentSlot = EquipmentSlot.ACCESSORY
         ),
 
         // Rare Accessories
@@ -304,7 +304,7 @@ object ItemDatabase {
             luck = 6,
             agility = 3,
             goldValue = 180,
-            equipmentSlot = EquipmentSlot.TRINKET,
+            equipmentSlot = EquipmentSlot.ACCESSORY,
             flavorText = "Moonlight guides the fortunate."
         ),
 
@@ -320,7 +320,7 @@ object ItemDatabase {
             agility = 10,
             luck = 8,
             goldValue = 1500,
-            equipmentSlot = EquipmentSlot.TRINKET,
+            equipmentSlot = EquipmentSlot.ACCESSORY,
             flavorText = "A piece of the storm itself."
         ),
 
@@ -335,7 +335,7 @@ object ItemDatabase {
             luck = 20,
             charisma = 15,
             goldValue = 0, // Cannot be sold
-            equipmentSlot = EquipmentSlot.TRINKET,
+            equipmentSlot = EquipmentSlot.ACCESSORY,
             flavorText = "All paths lead to destiny."
         )
     )

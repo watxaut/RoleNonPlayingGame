@@ -75,17 +75,5 @@ enum class ItemType {
     JUNK         // Vendor trash
 }
 
-/**
- * Equipment slots for items
- */
-enum class EquipmentSlot(val displayName: String) {
-    WEAPON("Weapon"),
-    HEAD("Head"),
-    CHEST("Chest"),
-    LEGS("Legs"),
-    FEET("Feet"),
-    HANDS("Hands"),
-    RING("Ring"),
-    AMULET("Amulet"),
-    TRINKET("Trinket")
-}
+// Note: EquipmentSlot enum is defined in Equipment.kt
+// Import it when needed for the equipmentSlot field above

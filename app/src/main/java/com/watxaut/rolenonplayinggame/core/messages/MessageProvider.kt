@@ -149,6 +149,18 @@ class MessageProvider(
     }
 
     /**
+     * Get a random message for visiting a location.
+     */
+    fun getExplorationVisitMessage(
+        characterName: String,
+        locationName: String
+    ): String {
+        val messages = LocalMessageRepository.getMessagesForCategory(MessageCategory.EXPLORATION_VISIT)
+        val message = messages.random(random)
+        return message.substitute(character = characterName, location = locationName)
+    }
+
+    /**
      * Get a combat message based on outcome and whether it was a critical roll.
      */
     fun getCombatMessage(
