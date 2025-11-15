@@ -2,6 +2,8 @@ package com.watxaut.rolenonplayinggame.core.lifecycle
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.util.Log
 import com.watxaut.rolenonplayinggame.BuildConfig
 import com.watxaut.rolenonplayinggame.data.local.dao.CharacterDao
@@ -9,6 +11,7 @@ import com.watxaut.rolenonplayinggame.data.remote.api.SupabaseApi
 import com.watxaut.rolenonplayinggame.data.remote.dto.OfflineSimulationResponse
 import com.watxaut.rolenonplayinggame.domain.repository.AuthRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +44,9 @@ class OfflineSimulationManager @Inject constructor(
         private const val TAG = "OfflineSimulationManager"
         private const val PREF_LAST_ACTIVE = "last_active_timestamp"
         private const val PREF_CACHED_USER_ID = "cached_user_id"
+
+        private const val MAX_RETRIES = 3
+        private const val INITIAL_RETRY_DELAY_MS = 1000L // 1 second
 
         private fun logDebug(message: String) {
             if (BuildConfig.DEBUG) {
@@ -114,7 +120,20 @@ class OfflineSimulationManager @Inject constructor(
     }
 
     /**
+     * Check if device has active network connection
+     */
+    private fun hasNetworkConnection(): Boolean {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+               capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    /**
      * Check if offline simulation is needed and run it
+     * Uses retry logic with exponential backoff to handle network initialization delays
      */
     suspend fun checkAndRunOfflineSimulation() {
         val prefKey = getUserPrefKey()
@@ -136,13 +155,13 @@ class OfflineSimulationManager @Inject constructor(
 
         logDebug("Checking offline simulation: offline=${timeOfflineMinutes}min")
 
-        // Only run simulation if offline for more than 5 minutes
-        if (timeOfflineMinutes < 5) {
+        // Only run simulation if offline for more than 1 minute (for debugging)
+        if (timeOfflineMinutes < 1) {
             logDebug("Offline time too short ($timeOfflineMinutes min), skipping simulation")
             return
         }
 
-        logDebug("Offline for $timeOfflineMinutes minutes, running simulation")
+        logDebug("Offline for $timeOfflineMinutes minutes, preparing simulation")
 
         // Get active character (for now, just get the first character)
         // TODO: Support multiple characters and select the active one
@@ -153,46 +172,90 @@ class OfflineSimulationManager @Inject constructor(
         }
 
         val character = characters.first()
-        runOfflineSimulation(character.id)
+
+        // Retry simulation with exponential backoff to handle network initialization
+        retryWithBackoff(
+            maxRetries = MAX_RETRIES,
+            initialDelayMs = INITIAL_RETRY_DELAY_MS,
+            operation = {
+                runOfflineSimulation(character.id)
+            }
+        )
+    }
+
+    /**
+     * Retry an operation with exponential backoff
+     * Checks network before each attempt
+     */
+    private suspend fun retryWithBackoff(
+        maxRetries: Int,
+        initialDelayMs: Long,
+        operation: suspend () -> Unit
+    ) {
+        var attempt = 0
+        var delayMs = initialDelayMs
+
+        while (attempt <= maxRetries) {
+            // Wait before retry (except first attempt)
+            if (attempt > 0) {
+                logDebug("Retry attempt $attempt after ${delayMs}ms delay")
+                delay(delayMs)
+                delayMs *= 2 // Exponential backoff: 1s, 2s, 4s
+            }
+
+            // Check network before each attempt
+            if (!hasNetworkConnection()) {
+                logDebug("Attempt $attempt: No network connection")
+                attempt++
+                continue
+            }
+
+            // Try the operation
+            try {
+                logDebug("Attempt ${attempt + 1}: Network available, running simulation")
+                operation()
+                logDebug("Operation succeeded on attempt ${attempt + 1}")
+                return // Success! Exit retry loop
+            } catch (e: Exception) {
+                logError("Attempt ${attempt + 1} failed", e)
+                attempt++
+
+                if (attempt > maxRetries) {
+                    logError("All retry attempts exhausted, giving up")
+                    return
+                }
+            }
+        }
+
+        logDebug("No network connection after $maxRetries retries, giving up")
     }
 
     /**
      * Run offline simulation for a specific character
+     * Note: SupabaseApi handles session refresh and authentication, so we don't check auth here
      */
     suspend fun runOfflineSimulation(characterId: String) {
         _simulationState.value = OfflineSimulationState.Loading
 
-        try {
-            // Ensure user is authenticated before calling the simulation
-            if (!authRepository.isAuthenticated()) {
-                logError("User not authenticated for offline simulation")
+        val result = supabaseApi.runOfflineSimulation(characterId)
+
+        result.fold(
+            onSuccess = { response ->
+                logDebug("Offline simulation completed successfully")
+                _simulationState.value = OfflineSimulationState.Success(response)
+
+                // Update local character with new state
+                updateCharacterFromSimulation(characterId, response)
+            },
+            onFailure = { error ->
+                logError("Offline simulation failed", error)
                 _simulationState.value = OfflineSimulationState.Error(
-                    "You must be logged in to use offline simulation"
+                    error.message ?: "Unknown error"
                 )
-                return
+                // Re-throw so retry logic knows it failed
+                throw error
             }
-
-            val result = supabaseApi.runOfflineSimulation(characterId)
-
-            result.fold(
-                onSuccess = { response ->
-                    logDebug("Offline simulation completed successfully")
-                    _simulationState.value = OfflineSimulationState.Success(response)
-
-                    // Update local character with new state
-                    updateCharacterFromSimulation(characterId, response)
-                },
-                onFailure = { error ->
-                    logError("Offline simulation failed", error)
-                    _simulationState.value = OfflineSimulationState.Error(
-                        error.message ?: "Unknown error"
-                    )
-                }
-            )
-        } catch (e: Exception) {
-            logError("Exception during offline simulation", e)
-            _simulationState.value = OfflineSimulationState.Error(e.message ?: "Unknown error")
-        }
+        )
     }
 
     /**

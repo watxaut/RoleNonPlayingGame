@@ -13,6 +13,7 @@ import com.watxaut.rolenonplayinggame.domain.model.Character
 import com.watxaut.rolenonplayinggame.domain.model.MissionContext
 import com.watxaut.rolenonplayinggame.domain.repository.ActivityRepository
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
+import com.watxaut.rolenonplayinggame.domain.repository.MissionProgressRepository
 import com.watxaut.rolenonplayinggame.presentation.map.getLocationDisplayName
 import java.time.Instant
 import javax.inject.Inject
@@ -36,7 +37,8 @@ class ExecuteDecisionUseCase @Inject constructor(
     private val activityRepository: ActivityRepository,
     private val combatSystem: CombatSystem,
     private val messageProvider: MessageProvider,
-    private val missionDiscoveryHelper: MissionDiscoveryHelper
+    private val missionDiscoveryHelper: MissionDiscoveryHelper,
+    private val missionProgressRepository: MissionProgressRepository
 ) {
 
     /**
@@ -94,7 +96,27 @@ class ExecuteDecisionUseCase @Inject constructor(
 
         if (secondaryMission != null) {
             println("📜 Secondary mission discovered: ${secondaryMission.name}")
-            // TODO: Save to database and log activity
+
+            // Save to database
+            missionProgressRepository.discoverSecondaryMission(
+                characterId = character.id,
+                missionId = secondaryMission.id
+            ).onSuccess {
+                // Log activity
+                activityRepository.logActivity(
+                    Activity(
+                        characterId = character.id,
+                        timestamp = Instant.now(),
+                        type = ActivityType.QUEST,
+                        description = "Discovered secondary mission: ${secondaryMission.name}",
+                        rewards = ActivityRewards(),
+                        metadata = mapOf("mission_id" to secondaryMission.id),
+                        isMajorEvent = true
+                    )
+                )
+            }.onFailure { error ->
+                println("Failed to save secondary mission: ${error.message}")
+            }
         }
 
         // Check principal mission progress during exploration
@@ -109,7 +131,33 @@ class ExecuteDecisionUseCase @Inject constructor(
             if (discoveredStep != null) {
                 println("🌟 Mission step discovered: ${discoveredStep.name}")
                 println("   Lore: ${discoveredStep.loreText}")
-                // TODO: Save progress to database and log activity
+
+                // Save progress to database
+                character.activePrincipalMissionId?.let { missionId ->
+                    missionProgressRepository.completeStory(
+                        characterId = character.id,
+                        missionId = missionId,
+                        stepId = discoveredStep.id
+                    ).onSuccess {
+                        // Log activity
+                        activityRepository.logActivity(
+                            Activity(
+                                characterId = character.id,
+                                timestamp = Instant.now(),
+                                type = ActivityType.QUEST,
+                                description = "Discovered: ${discoveredStep.name}\n${discoveredStep.loreText}",
+                                rewards = ActivityRewards(),
+                                metadata = mapOf(
+                                    "mission_id" to missionId,
+                                    "step_id" to discoveredStep.id
+                                ),
+                                isMajorEvent = true
+                            )
+                        )
+                    }.onFailure { error ->
+                        println("Failed to save mission step: ${error.message}")
+                    }
+                }
             }
 
             // Check for boss encounter (2% chance after all steps complete)

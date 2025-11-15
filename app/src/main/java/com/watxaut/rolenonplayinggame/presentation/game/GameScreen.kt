@@ -463,17 +463,18 @@ fun CharacterStatsCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Stats
+            // Stats (with equipment bonuses)
+            val equipmentBonuses = character.equipment.getTotalBonuses()
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                StatChip("STR", character.strength)
-                StatChip("INT", character.intelligence)
-                StatChip("AGI", character.agility)
-                StatChip("LUK", character.luck)
-                StatChip("CHA", character.charisma)
-                StatChip("VIT", character.vitality)
+                StatChipWithBonus("STR", character.strength, equipmentBonuses.strength)
+                StatChipWithBonus("INT", character.intelligence, equipmentBonuses.intelligence)
+                StatChipWithBonus("AGI", character.agility, equipmentBonuses.agility)
+                StatChipWithBonus("LUK", character.luck, equipmentBonuses.luck)
+                StatChipWithBonus("CHA", character.charisma, equipmentBonuses.charisma)
+                StatChipWithBonus("VIT", character.vitality, equipmentBonuses.vitality)
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -501,6 +502,38 @@ fun StatChip(statName: String, value: Int, modifier: Modifier = Modifier) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSecondaryContainer
         )
+    }
+}
+
+/**
+ * Stat chip that shows base value + equipment bonus
+ */
+@Composable
+fun StatChipWithBonus(statName: String, baseValue: Int, bonus: Int, modifier: Modifier = Modifier) {
+    val totalValue = baseValue + bonus
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "$statName: $totalValue",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                fontWeight = if (bonus > 0) FontWeight.Bold else FontWeight.Normal
+            )
+            if (bonus > 0) {
+                Spacer(modifier = Modifier.width(2.dp))
+                Text(
+                    text = "+$bonus",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF4CAF50), // Green for bonuses
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
 

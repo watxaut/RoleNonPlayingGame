@@ -1,15 +1,18 @@
 package com.watxaut.rolenonplayinggame.di
 
+import android.content.Context
 import com.watxaut.rolenonplayinggame.BuildConfig
 import com.watxaut.rolenonplayinggame.data.remote.api.SupabaseApi
 import com.watxaut.rolenonplayinggame.data.remote.api.SupabaseConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
 import io.ktor.client.*
@@ -29,12 +32,19 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideSupabaseClient(): SupabaseClient {
+    fun provideSupabaseClient(
+        @ApplicationContext context: Context
+    ): SupabaseClient {
         return createSupabaseClient(
             supabaseUrl = BuildConfig.SUPABASE_URL,
             supabaseKey = BuildConfig.SUPABASE_KEY
         ) {
-            install(Auth)
+            install(Auth) {
+                // CRITICAL: Enable session persistence to SharedPreferences
+                // Without this, sessions are lost when app backgrounds/restarts
+                autoSaveToStorage = true
+                autoLoadFromStorage = true
+            }
             install(Postgrest)
             install(Realtime)
         }

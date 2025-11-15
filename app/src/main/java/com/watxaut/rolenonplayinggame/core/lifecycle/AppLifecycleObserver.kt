@@ -56,7 +56,7 @@ class AppLifecycleObserver @Inject constructor(
      */
     private fun onAppForegrounded() {
         scope.launch {
-            // Check if offline simulation should run
+            // Check if offline simulation should run (with built-in retry logic)
             offlineSimulationManager.checkAndRunOfflineSimulation()
         }
     }
