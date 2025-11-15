@@ -123,9 +123,43 @@ data class CharacterEntity(
 
     private fun parseEquipmentLoadout(json: String): EquipmentLoadout {
         if (json.isEmpty() || json == "{}") return EquipmentLoadout()
-        // For now, return empty loadout. Equipment will be handled separately
-        // TODO: Implement proper JSON parsing when equipment system is fully integrated
-        return EquipmentLoadout()
+
+        // Parse JSON like: {"weaponMain":"rusty_sword","armor":"leather_armor"}
+        val equipmentIds = mutableMapOf<String, String>()
+        json.trim('{', '}')
+            .split(",")
+            .forEach { pair ->
+                val parts = pair.split(":")
+                if (parts.size == 2) {
+                    val key = parts[0].trim().trim('"')
+                    val value = parts[1].trim().trim('"')
+                    if (value.isNotEmpty() && value != "null") {
+                        equipmentIds[key] = value
+                    }
+                }
+            }
+
+        // Load equipment from database by ID
+        return EquipmentLoadout(
+            weaponMain = equipmentIds["weaponMain"]?.let {
+                com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getEquipmentById(it)
+            },
+            weaponOff = equipmentIds["weaponOff"]?.let {
+                com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getEquipmentById(it)
+            },
+            armor = equipmentIds["armor"]?.let {
+                com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getEquipmentById(it)
+            },
+            gloves = equipmentIds["gloves"]?.let {
+                com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getEquipmentById(it)
+            },
+            head = equipmentIds["head"]?.let {
+                com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getEquipmentById(it)
+            },
+            accessory = equipmentIds["accessory"]?.let {
+                com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getEquipmentById(it)
+            }
+        )
     }
 
     companion object {
@@ -176,9 +210,18 @@ data class CharacterEntity(
         }
 
         private fun toEquipmentJson(equipment: EquipmentLoadout): String {
-            // For now, return empty JSON. Equipment will be handled separately
-            // TODO: Implement proper JSON serialization when equipment system is fully integrated
-            return "{}"
+            // Serialize equipment as JSON with equipment IDs
+            // Example: {"weaponMain":"rusty_sword","armor":"leather_armor"}
+            val parts = mutableListOf<String>()
+
+            equipment.weaponMain?.let { parts.add("\"weaponMain\":\"${it.id}\"") }
+            equipment.weaponOff?.let { parts.add("\"weaponOff\":\"${it.id}\"") }
+            equipment.armor?.let { parts.add("\"armor\":\"${it.id}\"") }
+            equipment.gloves?.let { parts.add("\"gloves\":\"${it.id}\"") }
+            equipment.head?.let { parts.add("\"head\":\"${it.id}\"") }
+            equipment.accessory?.let { parts.add("\"accessory\":\"${it.id}\"") }
+
+            return if (parts.isEmpty()) "{}" else parts.joinToString(",", "{", "}")
         }
     }
 }
