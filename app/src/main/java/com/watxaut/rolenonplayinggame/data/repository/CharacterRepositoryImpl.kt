@@ -1,6 +1,7 @@
 package com.watxaut.rolenonplayinggame.data.repository
 
 import android.util.Log
+import com.watxaut.rolenonplayinggame.BuildConfig
 import com.watxaut.rolenonplayinggame.data.local.dao.CharacterDao
 import com.watxaut.rolenonplayinggame.data.local.entity.CharacterEntity
 import com.watxaut.rolenonplayinggame.data.remote.dto.SupabaseCharacterDto
@@ -24,6 +25,20 @@ class CharacterRepositoryImpl @Inject constructor(
 
     companion object {
         private const val TAG = "CharacterRepository"
+
+        private fun logDebug(message: String) {
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, message)
+            }
+        }
+
+        private fun logError(message: String, throwable: Throwable? = null) {
+            if (throwable != null) {
+                Log.e(TAG, message, throwable)
+            } else {
+                Log.e(TAG, message)
+            }
+        }
     }
 
     override fun getCharactersByUserId(userId: String): Flow<List<Character>> {
@@ -48,7 +63,7 @@ class CharacterRepositoryImpl @Inject constructor(
 
             // Save to local database first
             characterDao.insertCharacter(entity)
-            Log.d(TAG, "Character saved to local database: ${character.name}")
+            logDebug("Character saved to local database")
 
             // Sync to Supabase (with proper authentication handling)
             try {
@@ -85,20 +100,18 @@ class CharacterRepositoryImpl @Inject constructor(
                     lastActiveAt = character.lastActiveAt.toString()
                 )
 
-                Log.d(TAG, "Attempting to insert character to Supabase: ${character.name} with user_id: ${character.userId}")
+                logDebug("Attempting to sync character to Supabase")
                 val response = supabaseClient.from("characters").insert(supabaseData)
-                Log.d(TAG, "Supabase insert response: $response")
-                Log.d(TAG, "Character synced to Supabase successfully: ${character.name}")
+                logDebug("Character synced to Supabase successfully")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to sync character to Supabase, but saved locally. Error: ${e.message}", e)
-                e.printStackTrace()
+                logError("Failed to sync character to Supabase, but saved locally", e)
                 // Don't fail the entire operation if Supabase sync fails
                 // Character is still saved locally
             }
 
             Result.success(character)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create character", e)
+            logError("Failed to create character", e)
             Result.failure(e)
         }
     }

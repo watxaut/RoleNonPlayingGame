@@ -3,6 +3,7 @@ package com.watxaut.rolenonplayinggame.core.lifecycle
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import com.watxaut.rolenonplayinggame.BuildConfig
 import com.watxaut.rolenonplayinggame.data.local.dao.CharacterDao
 import com.watxaut.rolenonplayinggame.data.remote.api.SupabaseApi
 import com.watxaut.rolenonplayinggame.data.remote.dto.OfflineSimulationResponse
@@ -36,6 +37,26 @@ class OfflineSimulationManager @Inject constructor(
     )
     val simulationState: StateFlow<OfflineSimulationState> = _simulationState.asStateFlow()
 
+    companion object {
+        private const val TAG = "OfflineSimulationManager"
+        private const val PREF_LAST_ACTIVE = "last_active_timestamp"
+        private const val PREF_CACHED_USER_ID = "cached_user_id"
+
+        private fun logDebug(message: String) {
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, message)
+            }
+        }
+
+        private fun logError(message: String, throwable: Throwable? = null) {
+            if (throwable != null) {
+                Log.e(TAG, message, throwable)
+            } else {
+                Log.e(TAG, message)
+            }
+        }
+    }
+
     /**
      * Get cached user ID from preferences
      * This is more reliable than checking auth session on app foreground
@@ -51,7 +72,7 @@ class OfflineSimulationManager @Inject constructor(
         val userId = authRepository.getCurrentUserId()
         if (userId != null) {
             prefs.edit().putString(PREF_CACHED_USER_ID, userId).apply()
-            Log.d(TAG, "Cached user ID: $userId")
+            logDebug("Cached user ID")
         }
     }
 
@@ -60,7 +81,7 @@ class OfflineSimulationManager @Inject constructor(
      */
     fun clearCachedUserId() {
         prefs.edit().remove(PREF_CACHED_USER_ID).apply()
-        Log.d(TAG, "Cleared cached user ID")
+        logDebug("Cleared cached user ID")
     }
 
     /**
@@ -71,7 +92,7 @@ class OfflineSimulationManager @Inject constructor(
         return if (userId != null) {
             "${PREF_LAST_ACTIVE}_$userId"
         } else {
-            Log.d(TAG, "No cached user ID found")
+            logDebug("No cached user ID found")
             null
         }
     }
@@ -83,13 +104,13 @@ class OfflineSimulationManager @Inject constructor(
     fun recordAppBackgrounded() {
         val prefKey = getUserPrefKey()
         if (prefKey == null) {
-            Log.d(TAG, "No cached user ID, skipping background recording")
+            logDebug("No cached user ID, skipping background recording")
             return
         }
 
         val timestamp = System.currentTimeMillis()
         prefs.edit().putLong(prefKey, timestamp).apply()
-        Log.d(TAG, "App backgrounded at $timestamp for $prefKey")
+        logDebug("App backgrounded at $timestamp")
     }
 
     /**
@@ -98,14 +119,14 @@ class OfflineSimulationManager @Inject constructor(
     suspend fun checkAndRunOfflineSimulation() {
         val prefKey = getUserPrefKey()
         if (prefKey == null) {
-            Log.d(TAG, "No user logged in, skipping offline simulation check")
+            logDebug("No user logged in, skipping offline simulation check")
             return
         }
 
         val lastActiveTime = prefs.getLong(prefKey, 0L)
 
         if (lastActiveTime == 0L) {
-            Log.d(TAG, "No last active time recorded for $prefKey, skipping simulation (first time login)")
+            logDebug("No last active time recorded, skipping simulation (first time login)")
             return
         }
 
@@ -113,21 +134,21 @@ class OfflineSimulationManager @Inject constructor(
         val timeOfflineMs = now - lastActiveTime
         val timeOfflineMinutes = timeOfflineMs / (1000 * 60)
 
-        Log.d(TAG, "Checking offline simulation: lastActive=$lastActiveTime, now=$now, offline=${timeOfflineMinutes}min for $prefKey")
+        logDebug("Checking offline simulation: offline=${timeOfflineMinutes}min")
 
         // Only run simulation if offline for more than 5 minutes
         if (timeOfflineMinutes < 5) {
-            Log.d(TAG, "Offline time too short ($timeOfflineMinutes min), skipping simulation")
+            logDebug("Offline time too short ($timeOfflineMinutes min), skipping simulation")
             return
         }
 
-        Log.d(TAG, "Offline for $timeOfflineMinutes minutes, running simulation")
+        logDebug("Offline for $timeOfflineMinutes minutes, running simulation")
 
         // Get active character (for now, just get the first character)
         // TODO: Support multiple characters and select the active one
         val characters = characterDao.getAllCharacters()
         if (characters.isEmpty()) {
-            Log.d(TAG, "No characters found, skipping simulation")
+            logDebug("No characters found, skipping simulation")
             return
         }
 
@@ -144,7 +165,7 @@ class OfflineSimulationManager @Inject constructor(
         try {
             // Ensure user is authenticated before calling the simulation
             if (!authRepository.isAuthenticated()) {
-                Log.e(TAG, "User not authenticated for offline simulation")
+                logError("User not authenticated for offline simulation")
                 _simulationState.value = OfflineSimulationState.Error(
                     "You must be logged in to use offline simulation"
                 )
@@ -155,21 +176,21 @@ class OfflineSimulationManager @Inject constructor(
 
             result.fold(
                 onSuccess = { response ->
-                    Log.d(TAG, "Offline simulation completed: ${response.message}")
+                    logDebug("Offline simulation completed successfully")
                     _simulationState.value = OfflineSimulationState.Success(response)
 
                     // Update local character with new state
                     updateCharacterFromSimulation(characterId, response)
                 },
                 onFailure = { error ->
-                    Log.e(TAG, "Offline simulation failed", error)
+                    logError("Offline simulation failed", error)
                     _simulationState.value = OfflineSimulationState.Error(
                         error.message ?: "Unknown error"
                     )
                 }
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Exception during offline simulation", e)
+            logError("Exception during offline simulation", e)
             _simulationState.value = OfflineSimulationState.Error(e.message ?: "Unknown error")
         }
     }
@@ -192,10 +213,10 @@ class OfflineSimulationManager @Inject constructor(
                     maxHp = response.characterState.maxHp
                 )
                 characterDao.updateCharacter(updatedCharacter)
-                Log.d(TAG, "Updated character $characterId with simulation results")
+                logDebug("Updated character with simulation results")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to update character from simulation", e)
+            logError("Failed to update character from simulation", e)
         }
     }
 
@@ -204,12 +225,6 @@ class OfflineSimulationManager @Inject constructor(
      */
     fun dismissSimulationSummary() {
         _simulationState.value = OfflineSimulationState.Idle
-    }
-
-    companion object {
-        private const val TAG = "OfflineSimulationManager"
-        private const val PREF_LAST_ACTIVE = "last_active_timestamp"
-        private const val PREF_CACHED_USER_ID = "cached_user_id"
     }
 }
 
