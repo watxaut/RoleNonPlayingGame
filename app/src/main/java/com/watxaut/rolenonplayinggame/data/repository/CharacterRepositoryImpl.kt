@@ -205,8 +205,17 @@ class CharacterRepositoryImpl @Inject constructor(
      * Convert equipment loadout to JSON string for Supabase
      */
     private fun toEquipmentJson(equipment: com.watxaut.rolenonplayinggame.domain.model.EquipmentLoadout): String {
-        // For now, return empty JSON. Equipment will be handled separately
-        // TODO: Implement proper JSON serialization when equipment system is fully integrated
-        return "{}"
+        // Serialize equipment as JSON with equipment IDs
+        // Example: {"weaponMain":"rusty_sword","armor":"leather_armor"}
+        val parts = mutableListOf<String>()
+
+        equipment.weaponMain?.let { parts.add("\"weaponMain\":\"${it.id}\"") }
+        equipment.weaponOff?.let { parts.add("\"weaponOff\":\"${it.id}\"") }
+        equipment.armor?.let { parts.add("\"armor\":\"${it.id}\"") }
+        equipment.gloves?.let { parts.add("\"gloves\":\"${it.id}\"") }
+        equipment.head?.let { parts.add("\"head\":\"${it.id}\"") }
+        equipment.accessory?.let { parts.add("\"accessory\":\"${it.id}\"") }
+
+        return if (parts.isEmpty()) "{}" else parts.joinToString(",", "{", "}")
     }
 }
