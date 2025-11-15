@@ -287,7 +287,9 @@ data class GameUiState(
     val character: Character? = null,
     val activityLog: List<Activity> = emptyList(),
     val currentAction: String = "Waiting for character...",
-    val combatLog: List<String> = emptyList(),
+    val principalMissionProgress: String? = null,
+    val discoveredLore: List<String> = emptyList(),
+    val secondaryMissions: List<String> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
     val showLevelUpAnimation: Boolean = false

@@ -1,6 +1,7 @@
 package com.watxaut.rolenonplayinggame.domain.usecase
 
 import com.watxaut.rolenonplayinggame.core.ai.Decision
+import com.watxaut.rolenonplayinggame.core.ai.MissionDiscoveryHelper
 import com.watxaut.rolenonplayinggame.core.combat.CombatOutcome
 import com.watxaut.rolenonplayinggame.core.combat.CombatSystem
 import com.watxaut.rolenonplayinggame.core.messages.MessageProvider
@@ -9,6 +10,7 @@ import com.watxaut.rolenonplayinggame.domain.model.Activity
 import com.watxaut.rolenonplayinggame.domain.model.ActivityRewards
 import com.watxaut.rolenonplayinggame.domain.model.ActivityType
 import com.watxaut.rolenonplayinggame.domain.model.Character
+import com.watxaut.rolenonplayinggame.domain.model.MissionContext
 import com.watxaut.rolenonplayinggame.domain.repository.ActivityRepository
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
 import com.watxaut.rolenonplayinggame.presentation.map.getLocationDisplayName
@@ -27,12 +29,14 @@ import kotlin.math.min
  * - Update character state
  * - Log activities
  * - Handle combat, exploration, resting, etc.
+ * - Check for mission discoveries (principal steps, bosses, secondary missions)
  */
 class ExecuteDecisionUseCase @Inject constructor(
     private val characterRepository: CharacterRepository,
     private val activityRepository: ActivityRepository,
     private val combatSystem: CombatSystem,
-    private val messageProvider: MessageProvider
+    private val messageProvider: MessageProvider,
+    private val missionDiscoveryHelper: MissionDiscoveryHelper
 ) {
 
     /**
@@ -65,9 +69,61 @@ class ExecuteDecisionUseCase @Inject constructor(
             // Log activity
             activityRepository.logActivity(outcome.activity)
 
+            // Check for mission discoveries (TODO: integrate when DB schema is ready)
+            checkMissionDiscoveries(outcome.updatedCharacter, decision)
+
             Result.success(outcome)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Check for mission discoveries based on the action taken.
+     * This would be integrated with the database once mission tables are created.
+     */
+    private suspend fun checkMissionDiscoveries(character: Character, decision: Decision) {
+        // TODO: Get actual mission progress from database once schema is implemented
+        // For now, this demonstrates the integration points
+
+        // Check secondary mission discovery on ANY action (1% chance)
+        val secondaryMission = missionDiscoveryHelper.checkSecondaryMissionDiscovery(
+            character = character,
+            activeSecondaryMissions = emptySet() // TODO: Get from DB
+        )
+
+        if (secondaryMission != null) {
+            println("📜 Secondary mission discovered: ${secondaryMission.name}")
+            // TODO: Save to database and log activity
+        }
+
+        // Check principal mission progress during exploration
+        if (decision is Decision.Explore) {
+            // Check for mission step discovery (2% chance)
+            val discoveredStep = missionDiscoveryHelper.checkPrincipalMissionStepDiscovery(
+                character = character,
+                currentLocation = character.currentLocation,
+                activeMissionProgress = null // TODO: Get from DB
+            )
+
+            if (discoveredStep != null) {
+                println("🌟 Mission step discovered: ${discoveredStep.name}")
+                println("   Lore: ${discoveredStep.loreText}")
+                // TODO: Save progress to database and log activity
+            }
+
+            // Check for boss encounter (2% chance after all steps complete)
+            val bossEncounter = missionDiscoveryHelper.checkBossEncounter(
+                character = character,
+                currentLocation = character.currentLocation,
+                activeMissionProgress = null // TODO: Get from DB
+            )
+
+            if (bossEncounter != null) {
+                println("⚔️ BOSS ENCOUNTER: ${bossEncounter.bossName}")
+                println("   ${bossEncounter.loreText}")
+                // TODO: Trigger boss combat and log activity
+            }
         }
     }
 

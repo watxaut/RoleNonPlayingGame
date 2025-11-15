@@ -173,6 +173,16 @@ fun GameScreen(
                         Tab(
                             selected = selectedTabIndex == 2,
                             onClick = { selectedTabIndex = 2 },
+                            text = { Text("Lore") }
+                        )
+                        Tab(
+                            selected = selectedTabIndex == 3,
+                            onClick = { selectedTabIndex = 3 },
+                            text = { Text("Missions") }
+                        )
+                        Tab(
+                            selected = selectedTabIndex == 4,
+                            onClick = { selectedTabIndex = 4 },
                             text = { Text("Activity Log") }
                         )
                     }
@@ -182,7 +192,7 @@ fun GameScreen(
                         0 -> CurrentTab(
                             character = uiState.character!!,
                             currentAction = uiState.currentAction,
-                            combatLog = uiState.combatLog,
+                            principalMissionProgress = uiState.principalMissionProgress,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(16.dp)
@@ -193,7 +203,19 @@ fun GameScreen(
                                 .fillMaxSize()
                                 .padding(16.dp)
                         )
-                        2 -> ActivityLogTab(
+                        2 -> LoreTab(
+                            discoveredLore = uiState.discoveredLore,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                        )
+                        3 -> SecondaryMissionsTab(
+                            secondaryMissions = uiState.secondaryMissions,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp)
+                        )
+                        4 -> ActivityLogTab(
                             activities = uiState.activityLog,
                             onActivityClick = { activity ->
                                 selectedActivity = activity
@@ -267,7 +289,7 @@ fun GameScreen(
 fun CurrentTab(
     character: Character,
     currentAction: String,
-    combatLog: List<String>,
+    principalMissionProgress: String?,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -285,11 +307,13 @@ fun CurrentTab(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Combat log (if in combat)
-        if (combatLog.isNotEmpty()) {
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Principal mission display at the bottom
+        if (principalMissionProgress != null) {
             Spacer(modifier = Modifier.height(12.dp))
-            CombatLogSection(
-                combatLog = combatLog,
+            PrincipalMissionCard(
+                missionProgress = principalMissionProgress,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -1101,30 +1125,237 @@ fun ActivityDetailDialog(
     }
 }
 
+/**
+ * Display principal mission progress at bottom of Current tab
+ */
 @Composable
-fun CombatLogSection(
-    combatLog: List<String>,
+fun PrincipalMissionCard(
+    missionProgress: String,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
-        )
+            containerColor = Color(0xFFFFD700).copy(alpha = 0.2f) // Gold tint
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Star,
+                    contentDescription = "Principal Mission",
+                    tint = Color(0xFFFFD700),
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Principal Mission",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFB8860B) // Dark golden
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Text(
-                text = "Combat Log",
-                style = MaterialTheme.typography.titleSmall,
+                text = missionProgress,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+}
+
+/**
+ * Lore tab showing discovered world knowledge
+ */
+@Composable
+fun LoreTab(
+    discoveredLore: List<String>,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(modifier = modifier) {
+        item {
+            Text(
+                text = "Discovered Lore",
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(4.dp))
-            combatLog.take(5).forEach { logLine ->
-                Text(
-                    text = logLine,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Your hero has discovered ${discoveredLore.size} lore fragments",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        items(discoveredLore.size) { index ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
                 )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Lore Fragment ${index + 1}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = discoveredLore[index],
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        ),
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+        }
+
+        if (discoveredLore.isEmpty()) {
+            item {
+                Text(
+                    text = "No lore discovered yet. Complete principal mission steps to uncover the mysteries of Aethermoor.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Secondary Missions tab showing active and completed missions
+ */
+@Composable
+fun SecondaryMissionsTab(
+    secondaryMissions: List<String>,
+    modifier: Modifier = Modifier
+) {
+    var selectedMission by remember { mutableStateOf<String?>(null) }
+
+    Column(modifier = modifier) {
+        Text(
+            text = "Secondary Missions",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "${secondaryMissions.size} active missions",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            items(secondaryMissions.size) { index ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                        .clickable { selectedMission = secondaryMissions[index] },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Mission ${index + 1}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = secondaryMissions[index],
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1
+                            )
+                        }
+                        Text(
+                            text = "Ongoing",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            if (secondaryMissions.isEmpty()) {
+                item {
+                    Text(
+                        text = "No secondary missions yet. Your hero will discover them during adventures (1% chance per action).",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    // Mission detail popup
+    selectedMission?.let { mission ->
+        Dialog(onDismissRequest = { selectedMission = null }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Mission Details",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(onClick = { selectedMission = null }) {
+                            Icon(Icons.Default.Close, "Close")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = mission,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Win Condition: (Details will be shown here)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

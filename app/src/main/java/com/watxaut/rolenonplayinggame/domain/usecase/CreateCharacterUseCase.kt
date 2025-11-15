@@ -1,15 +1,17 @@
 package com.watxaut.rolenonplayinggame.domain.usecase
 
+import com.watxaut.rolenonplayinggame.data.repository.PrincipalMissionsRepository
 import com.watxaut.rolenonplayinggame.domain.model.Character
 import com.watxaut.rolenonplayinggame.domain.model.CharacterStats
 import com.watxaut.rolenonplayinggame.domain.model.JobClass
 import com.watxaut.rolenonplayinggame.domain.model.PersonalityTraits
+import com.watxaut.rolenonplayinggame.domain.model.PrincipalMissionProgress
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
 import javax.inject.Inject
 
 /**
  * Use case for creating a new character.
- * Validates input, generates personality traits, and persists the character.
+ * Validates input, generates personality traits, assigns principal mission, and persists the character.
  */
 class CreateCharacterUseCase @Inject constructor(
     private val characterRepository: CharacterRepository
@@ -56,6 +58,21 @@ class CreateCharacterUseCase @Inject constructor(
             jobClass = jobClass,
             initialStats = stats.toMap()
         )
+
+        // Assign a random principal mission for the character's job class
+        val assignedMission = PrincipalMissionsRepository.getRandomMissionForJobClass(jobClass)
+
+        // TODO: When database is updated, persist the mission assignment
+        // For now, the mission will be assigned when DB schema is implemented
+        // The mission ID would be stored as: assignedMission?.id
+
+        // Log mission assignment for development
+        assignedMission?.let { mission ->
+            println("✨ Assigned principal mission to ${character.name}: ${mission.name}")
+            println("   Mission ID: ${mission.id}")
+            println("   Region: ${mission.loreRegion.displayName}")
+            println("   Steps: ${mission.steps.size}")
+        }
 
         // Persist to repository
         return characterRepository.createCharacter(character)
