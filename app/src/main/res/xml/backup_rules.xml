@@ -1,13 +1,25 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Backup rules for Role Non-Playing Game
+   Configures what data should be backed up to cloud storage
+
+   Security considerations:
+   - Exclude sensitive user data that shouldn't be backed up
+   - Exclude cached auth tokens and session data
+   - Exclude temporary simulation data
+
+   See: https://developer.android.com/guide/topics/data/autobackup
+   Note: This file is for devices API 31+ (Android 12+)
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <!-- Include normal game data -->
+    <include domain="database" path="." />
+    <include domain="sharedpref" path="." />
+
+    <!-- Exclude sensitive preferences containing cached user IDs and auth data -->
+    <exclude domain="sharedpref" path="offline_simulation_prefs.xml" />
+
+    <!-- Exclude Room database WAL files (they're temporary) -->
+    <exclude domain="database" path="role_non_playing_game.db-shm" />
+    <exclude domain="database" path="role_non_playing_game.db-wal" />
 </full-backup-content>

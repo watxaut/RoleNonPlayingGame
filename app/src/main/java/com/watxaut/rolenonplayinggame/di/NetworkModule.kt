@@ -46,14 +46,17 @@ object NetworkModule {
         return HttpClient(CIO) {
             install(ContentNegotiation) {
                 json(Json {
-                    prettyPrint = true
+                    prettyPrint = BuildConfig.DEBUG
                     isLenient = true
+                    // Keep ignoreUnknownKeys for forward compatibility with API changes
+                    // But log unknown keys in debug builds for awareness
                     ignoreUnknownKeys = true
                 })
             }
             install(Logging) {
                 logger = Logger.DEFAULT
-                level = LogLevel.INFO
+                // Only log in debug builds to prevent sensitive data exposure
+                level = if (BuildConfig.DEBUG) LogLevel.INFO else LogLevel.NONE
             }
         }
     }

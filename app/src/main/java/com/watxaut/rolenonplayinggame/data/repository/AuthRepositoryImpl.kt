@@ -1,6 +1,7 @@
 package com.watxaut.rolenonplayinggame.data.repository
 
 import android.util.Log
+import com.watxaut.rolenonplayinggame.BuildConfig
 import com.watxaut.rolenonplayinggame.domain.repository.AuthRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
@@ -21,6 +22,20 @@ class AuthRepositoryImpl @Inject constructor(
 
     companion object {
         private const val TAG = "AuthRepository"
+
+        private fun logDebug(message: String) {
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, message)
+            }
+        }
+
+        private fun logError(message: String, throwable: Throwable? = null) {
+            if (throwable != null) {
+                Log.e(TAG, message, throwable)
+            } else {
+                Log.e(TAG, message)
+            }
+        }
     }
 
     private val auth: Auth
@@ -30,7 +45,7 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             auth.currentUserOrNull()?.id
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting current user ID", e)
+            logError("Error getting current user ID", e)
             null
         }
     }
@@ -39,7 +54,7 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             auth.currentUserOrNull()?.email
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting current user email", e)
+            logError("Error getting current user email", e)
             null
         }
     }
@@ -49,31 +64,31 @@ class AuthRepositoryImpl @Inject constructor(
             // Check if already signed in
             val currentUser = auth.currentUserOrNull()
             if (currentUser != null) {
-                Log.d(TAG, "User already authenticated: ${currentUser.id}")
+                logDebug("User already authenticated")
                 return Result.success(currentUser.id)
             }
 
             // Sign in anonymously
-            Log.d(TAG, "Signing in anonymously...")
+            logDebug("Signing in anonymously...")
             auth.signInAnonymously()
 
             val userId = auth.currentUserOrNull()?.id
             if (userId != null) {
-                Log.d(TAG, "Anonymous sign-in successful: $userId")
+                logDebug("Anonymous sign-in successful")
                 Result.success(userId)
             } else {
-                Log.e(TAG, "Anonymous sign-in failed: user ID is null")
+                logError("Anonymous sign-in failed: user ID is null")
                 Result.failure(Exception("Failed to get user ID after anonymous sign-in"))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Anonymous sign-in failed", e)
+            logError("Anonymous sign-in failed", e)
             Result.failure(e)
         }
     }
 
     override suspend fun signUpWithEmail(email: String, password: String): Result<String> {
         return try {
-            Log.d(TAG, "Signing up with email: $email")
+            logDebug("Signing up with email")
 
             auth.signUpWith(Email) {
                 this.email = email
@@ -82,14 +97,14 @@ class AuthRepositoryImpl @Inject constructor(
 
             val userId = auth.currentUserOrNull()?.id
             if (userId != null) {
-                Log.d(TAG, "Email sign-up successful: $userId")
+                logDebug("Email sign-up successful")
                 Result.success(userId)
             } else {
-                Log.e(TAG, "Email sign-up failed: user ID is null")
+                logError("Email sign-up failed: user ID is null")
                 Result.failure(Exception("Failed to get user ID after sign-up"))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Email sign-up failed", e)
+            logError("Email sign-up failed", e)
             val errorMessage = when {
                 e.message?.contains("User already registered") == true ->
                     "This email is already registered. Please sign in instead."
@@ -103,7 +118,7 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun signInWithEmail(email: String, password: String): Result<String> {
         return try {
-            Log.d(TAG, "Signing in with email: $email")
+            logDebug("Signing in with email")
 
             auth.signInWith(Email) {
                 this.email = email
@@ -112,14 +127,14 @@ class AuthRepositoryImpl @Inject constructor(
 
             val userId = auth.currentUserOrNull()?.id
             if (userId != null) {
-                Log.d(TAG, "Email sign-in successful: $userId")
+                logDebug("Email sign-in successful")
                 Result.success(userId)
             } else {
-                Log.e(TAG, "Email sign-in failed: user ID is null")
+                logError("Email sign-in failed: user ID is null")
                 Result.failure(Exception("Failed to get user ID after sign-in"))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Email sign-in failed", e)
+            logError("Email sign-in failed", e)
             val errorMessage = when {
                 e.message?.contains("Email not confirmed") == true ->
                     "Your email is not confirmed. Please check the Supabase dashboard to confirm your account, or delete and recreate your account with email confirmation disabled."
@@ -137,7 +152,7 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             auth.currentUserOrNull() != null
         } catch (e: Exception) {
-            Log.e(TAG, "Error checking authentication status", e)
+            logError("Error checking authentication status", e)
             false
         }
     }
@@ -153,7 +168,7 @@ class AuthRepositoryImpl @Inject constructor(
                 user.userMetadata?.get("is_anonymous")?.jsonPrimitive?.booleanOrNull ?: false
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error checking if user is anonymous", e)
+            logError("Error checking if user is anonymous", e)
             false
         }
     }
@@ -161,10 +176,10 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun signOut(): Result<Unit> {
         return try {
             auth.signOut()
-            Log.d(TAG, "User signed out successfully")
+            logDebug("User signed out successfully")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Sign out failed", e)
+            logError("Sign out failed", e)
             Result.failure(e)
         }
     }

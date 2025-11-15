@@ -1,19 +1,34 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Data extraction rules for Role Non-Playing Game (Android 12+)
+   Controls what data can be backed up and transferred between devices
+
+   Security hardened to exclude sensitive authentication and cache data.
+   See: https://developer.android.com/about/versions/12/backup-restore#xml-changes
 -->
 <data-extraction-rules>
+    <!-- Cloud backup configuration -->
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <!-- Include game database (character data, activities) -->
+        <include domain="database" path="role_non_playing_game.db" />
+
+        <!-- Include normal shared preferences -->
+        <include domain="sharedpref" path="." />
+
+        <!-- Exclude sensitive cached user authentication data -->
+        <exclude domain="sharedpref" path="offline_simulation_prefs.xml" />
+
+        <!-- Exclude temporary database files -->
+        <exclude domain="database" path="role_non_playing_game.db-shm" />
+        <exclude domain="database" path="role_non_playing_game.db-wal" />
     </cloud-backup>
-    <!--
+
+    <!-- Device-to-device transfer configuration (same rules as cloud backup) -->
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <include domain="database" path="role_non_playing_game.db" />
+        <include domain="sharedpref" path="." />
+        <exclude domain="sharedpref" path="offline_simulation_prefs.xml" />
+        <exclude domain="database" path="role_non_playing_game.db-shm" />
+        <exclude domain="database" path="role_non_playing_game.db-wal" />
     </device-transfer>
-    -->
 </data-extraction-rules>

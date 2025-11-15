@@ -31,6 +31,9 @@ ktor = "3.0.2"
 # WorkManager
 work = "2.10.0"
 
+# Security
+security = "1.1.0-alpha06"
+
 # Testing
 mockk = "1.13.13"
 coroutinesTest = "1.9.0"
@@ -89,6 +92,9 @@ ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version
 
 # WorkManager
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
+
+# Security
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "security" }
 
 # Testing
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }

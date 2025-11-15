@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network Security Configuration for Role Non-Playing Game
+
+  This configuration enhances security by:
+  1. Blocking all cleartext (HTTP) traffic
+  2. Enforcing HTTPS for all network communications
+  3. Allowing debug-only configurations for development
+
+  For production, consider adding certificate pinning for Supabase domains.
+  To add certificate pinning:
+  1. Get the SHA-256 fingerprint of Supabase's certificate
+  2. Add <pin-set> configuration to the <domain-config>
+
+  More info: https://developer.android.com/training/articles/security-config
+-->
+<network-security-config>
+    <!-- Block all cleartext traffic by default -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Trust system certificate authorities -->
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Debug-only: Allow localhost for development -->
+    <debug-overrides>
+        <trust-anchors>
+            <!-- Trust user-installed certificates for debugging (e.g., Charles Proxy, Fiddler) -->
+            <certificates src="user" />
+            <certificates src="system" />
+        </trust-anchors>
+    </debug-overrides>
+
+    <!--
+    Example: Certificate Pinning for Supabase (commented out)
+    To enable, uncomment and replace with actual certificate pins
+
+    <domain-config>
+        <domain includeSubdomains="true">supabase.co</domain>
+        <pin-set expiration="2026-01-01">
+            <pin digest="SHA-256">REPLACE_WITH_ACTUAL_PIN_BASE64</pin>
+            <pin digest="SHA-256">REPLACE_WITH_BACKUP_PIN_BASE64</pin>
+        </pin-set>
+    </domain-config>
+    -->
+</network-security-config>
