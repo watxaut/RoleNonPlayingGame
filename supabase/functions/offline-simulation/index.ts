@@ -20,25 +20,42 @@ serve(async (req) => {
   }
 
   try {
-    // Create Supabase client
+    // Extract JWT token from Authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const jwt = authHeader.replace("Bearer ", "");
+
+    // Create Supabase client with the user's JWT to respect RLS policies
+    // This ensures subsequent database queries use the authenticated user context
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       {
         global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+          },
         },
       }
     );
 
-    // Get user from auth token
+    // Get user from JWT token directly (stateless verification)
     const {
       data: { user },
       error: userError,
-    } = await supabaseClient.auth.getUser();
+    } = await supabaseClient.auth.getUser(jwt);
 
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      return new Response(JSON.stringify({
+        error: "Unauthorized",
+        details: userError?.message || "No user found"
+      }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -64,11 +81,14 @@ serve(async (req) => {
       .select("*")
       .eq("id", characterId)
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (characterError || !character) {
       return new Response(
-        JSON.stringify({ error: "Character not found or access denied" }),
+        JSON.stringify({
+          error: "Character not found or access denied",
+          details: characterError?.message
+        }),
         {
           status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -85,13 +105,39 @@ serve(async (req) => {
     // Time compression: 1 real hour = 2 game hours
     const gameHoursToSimulate = Math.floor(timeOfflineHours * 2);
 
-    // Don't simulate if less than 5 minutes offline (< 0.5 game hours)
+    // Don't simulate if less than 1 minute offline
     if (gameHoursToSimulate < 0.5) {
       return new Response(
         JSON.stringify({
-          message: "No simulation needed (less than 5 minutes offline)",
+          message: "No simulation needed (less than 1 minute offline)",
           gameHoursSimulated: 0,
+          realHoursOffline: timeOfflineHours,
           activities: [],
+          summary: {
+            totalCombats: 0,
+            combatsWon: 0,
+            combatsLost: 0,
+            totalXpGained: 0,
+            totalGoldGained: 0,
+            levelsGained: 0,
+            deaths: 0,
+            locationsDiscovered: 0,
+            itemsFound: 0,
+            majorEvents: [],
+          },
+          characterState: {
+            level: character.level,
+            experience: character.experience,
+            gold: character.gold,
+            current_hp: character.current_hp,
+            max_hp: character.max_hp,
+          },
+          characterName: character.name,
+          missionProgress: {
+            principalMissionSteps: 0,
+            secondaryMissionsDiscovered: 0,
+            loreDiscovered: 0,
+          },
         } as SimulationResponse),
         {
           status: 200,
@@ -103,10 +149,6 @@ serve(async (req) => {
     // Cap simulation at 7 days (1008 game hours = 168 real hours)
     const cappedGameHours = Math.min(gameHoursToSimulate, 1008);
 
-    console.log(
-      `Simulating ${cappedGameHours} game hours for character ${character.name}`
-    );
-
     // Run the offline simulation
     const simulationResult = await simulateOfflineProgress(
       character,
@@ -115,6 +157,7 @@ serve(async (req) => {
     );
 
     // Update character state in database
+    // Note: Supabase JS client automatically handles JSON serialization for JSONB columns
     const { error: updateError } = await supabaseClient
       .from("characters")
       .update({
@@ -130,18 +173,22 @@ serve(async (req) => {
         max_hp: simulationResult.updatedCharacter.max_hp,
         gold: simulationResult.updatedCharacter.gold,
         current_location: simulationResult.updatedCharacter.current_location,
-        inventory: simulationResult.updatedCharacter.inventory,
+        inventory: simulationResult.updatedCharacter.inventory, // Arrays are auto-serialized to JSONB
         equipped_items: simulationResult.updatedCharacter.equipped_items,
-        discovered_locations:
-          simulationResult.updatedCharacter.discovered_locations,
+        discovered_locations: simulationResult.updatedCharacter.discovered_locations,
+        active_principal_mission_id: simulationResult.updatedCharacter.active_principal_mission_id,
+        principal_mission_started_at: simulationResult.updatedCharacter.principal_mission_started_at,
+        principal_mission_completed_count: simulationResult.updatedCharacter.principal_mission_completed_count,
         last_active_at: now.toISOString(),
       })
       .eq("id", characterId);
 
     if (updateError) {
-      console.error("Error updating character:", updateError);
       return new Response(
-        JSON.stringify({ error: "Failed to update character" }),
+        JSON.stringify({
+          error: "Failed to update character",
+          details: updateError.message
+        }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -153,7 +200,7 @@ serve(async (req) => {
     const batchSize = 100;
     for (let i = 0; i < simulationResult.activities.length; i += batchSize) {
       const batch = simulationResult.activities.slice(i, i + batchSize);
-      const { error: activityError } = await supabaseClient
+      await supabaseClient
         .from("activity_logs")
         .insert(
           batch.map((activity) => ({
@@ -166,10 +213,6 @@ serve(async (req) => {
             is_major_event: activity.is_major_event,
           }))
         );
-
-      if (activityError) {
-        console.error("Error inserting activity logs:", activityError);
-      }
     }
 
     // Return simulation summary
@@ -186,6 +229,12 @@ serve(async (req) => {
         current_hp: simulationResult.updatedCharacter.current_hp,
         max_hp: simulationResult.updatedCharacter.max_hp,
       },
+      characterName: character.name,
+      missionProgress: {
+        principalMissionSteps: simulationResult.missionStepsDiscovered,
+        secondaryMissionsDiscovered: simulationResult.secondaryMissionsDiscovered,
+        loreDiscovered: 0, // TODO: Track lore discoveries
+      },
     };
 
     return new Response(JSON.stringify(response), {
@@ -193,9 +242,11 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Unexpected error:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error", details: error.message }),
+      JSON.stringify({
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : String(error)
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

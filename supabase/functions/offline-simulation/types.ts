@@ -17,6 +17,12 @@ export interface SimulationResponse {
     current_hp: number;
     max_hp: number;
   };
+  characterName?: string;
+  missionProgress?: {
+    principalMissionSteps: number;
+    secondaryMissionsDiscovered: number;
+    loreDiscovered: number;
+  };
 }
 
 export interface Character {
@@ -48,6 +54,9 @@ export interface Character {
   equipped_items: any;
   discovered_locations: string[];
   active_quests: any[];
+  active_principal_mission_id: string | null;
+  principal_mission_started_at: string | null;
+  principal_mission_completed_count: number;
 }
 
 export interface Activity {
@@ -80,6 +89,8 @@ export interface SimulationResult {
   updatedCharacter: Character;
   activities: Activity[];
   summary: SimulationSummary;
+  missionStepsDiscovered: number;
+  secondaryMissionsDiscovered: number;
 }
 
 export interface Enemy {

@@ -33,7 +33,28 @@ data class OfflineSimulationResponse(
     val summary: SimulationSummaryDto,
 
     @SerialName("characterState")
-    val characterState: CharacterStateDto
+    val characterState: CharacterStateDto,
+
+    @SerialName("characterName")
+    val characterName: String? = null,
+
+    @SerialName("missionProgress")
+    val missionProgress: MissionProgressDto? = null
+)
+
+/**
+ * Mission progress from simulation
+ */
+@Serializable
+data class MissionProgressDto(
+    @SerialName("principalMissionSteps")
+    val principalMissionSteps: Int = 0,
+
+    @SerialName("secondaryMissionsDiscovered")
+    val secondaryMissionsDiscovered: Int = 0,
+
+    @SerialName("loreDiscovered")
+    val loreDiscovered: Int = 0
 )
 
 /**

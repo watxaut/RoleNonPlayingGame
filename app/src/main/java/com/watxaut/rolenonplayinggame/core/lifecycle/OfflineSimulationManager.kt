@@ -297,6 +297,6 @@ class OfflineSimulationManager @Inject constructor(
 sealed class OfflineSimulationState {
     data object Idle : OfflineSimulationState()
     data object Loading : OfflineSimulationState()
-    data class Success(val response: OfflineSimulationResponse) : OfflineSimulationState()
+    data class Success(val responses: List<OfflineSimulationResponse>) : OfflineSimulationState()
     data class Error(val message: String) : OfflineSimulationState()
 }

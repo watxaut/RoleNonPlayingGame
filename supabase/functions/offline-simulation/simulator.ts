@@ -27,6 +27,20 @@ export async function simulateOfflineProgress(
   // Deep clone character to avoid mutating original
   const char: Character = JSON.parse(JSON.stringify(character));
 
+  // Parse JSON fields if they are strings (from database)
+  if (typeof char.discovered_locations === 'string') {
+    char.discovered_locations = JSON.parse(char.discovered_locations || '[]');
+  }
+  if (typeof char.inventory === 'string') {
+    char.inventory = JSON.parse(char.inventory || '[]');
+  }
+  if (typeof char.active_quests === 'string') {
+    char.active_quests = JSON.parse(char.active_quests || '[]');
+  }
+  if (typeof char.equipped_items === 'string') {
+    char.equipped_items = JSON.parse(char.equipped_items || '{}');
+  }
+
   const activities: Activity[] = [];
   const summary: SimulationSummary = {
     totalCombats: 0,
@@ -40,6 +54,10 @@ export async function simulateOfflineProgress(
     itemsFound: 0,
     majorEvents: [],
   };
+
+  // Track mission progress during simulation
+  const missionStepsDiscovered: string[] = [];
+  const secondaryMissionsDiscovered: string[] = [];
 
   // Simulation loop
   let elapsedMinutes = 0;
@@ -57,7 +75,14 @@ export async function simulateOfflineProgress(
     );
 
     // Execute decision
-    const activity = executeDecision(char, decision, activityTime, summary);
+    const activity = executeDecision(
+      char,
+      decision,
+      activityTime,
+      summary,
+      missionStepsDiscovered,
+      secondaryMissionsDiscovered
+    );
 
     if (activity) {
       activities.push(activity);
@@ -91,7 +116,6 @@ export async function simulateOfflineProgress(
 
     // Safety limit: max 1000 activities to prevent runaway simulations
     if (activities.length >= 1000) {
-      console.log("Activity limit reached, stopping simulation");
       break;
     }
   }
@@ -101,10 +125,58 @@ export async function simulateOfflineProgress(
     char.current_hp = char.max_hp;
   }
 
+  // Save mission progress to database if any was made
+  if (missionStepsDiscovered.length > 0 && char.active_principal_mission_id) {
+    try {
+      // Fetch current progress
+      const { data: currentProgress } = await supabaseClient
+        .from("principal_mission_progress")
+        .select("completed_step_ids")
+        .eq("character_id", char.id)
+        .eq("mission_id", char.active_principal_mission_id)
+        .maybeSingle();
+
+      const existingSteps = currentProgress?.completed_step_ids || [];
+      const allSteps = [...new Set([...existingSteps, ...missionStepsDiscovered])];
+
+      // Update or insert progress
+      await supabaseClient
+        .from("principal_mission_progress")
+        .upsert({
+          character_id: char.id,
+          mission_id: char.active_principal_mission_id,
+          completed_step_ids: allSteps,
+          last_progress_at: new Date().toISOString(),
+          progress_percentage: Math.floor((allSteps.length / 10) * 100),
+        });
+    } catch (e) {
+      // Silently fail - mission progress is not critical
+    }
+  }
+
+  if (secondaryMissionsDiscovered.length > 0) {
+    try {
+      for (const missionId of secondaryMissionsDiscovered) {
+        await supabaseClient
+          .from("secondary_mission_progress")
+          .insert({
+            character_id: char.id,
+            mission_id: missionId,
+            status: "ongoing",
+            discovered_at: new Date().toISOString(),
+          });
+      }
+    } catch (e) {
+      // Silently fail - mission progress is not critical
+    }
+  }
+
   return {
     updatedCharacter: char,
     activities,
     summary,
+    missionStepsDiscovered: missionStepsDiscovered.length,
+    secondaryMissionsDiscovered: secondaryMissionsDiscovered.length,
   };
 }
 
@@ -115,17 +187,33 @@ function executeDecision(
   character: Character,
   decision: any,
   timestamp: Date,
-  summary: SimulationSummary
+  summary: SimulationSummary,
+  missionStepsDiscovered: string[],
+  secondaryMissionsDiscovered: string[]
 ): Activity | null {
   switch (decision.type as DecisionType) {
     case "rest" as DecisionType:
       return executeRest(character, timestamp);
 
     case "explore" as DecisionType:
-      return executeExplore(character, decision, timestamp, summary);
+      return executeExplore(
+        character,
+        decision,
+        timestamp,
+        summary,
+        missionStepsDiscovered,
+        secondaryMissionsDiscovered
+      );
 
     case "combat" as DecisionType:
-      return executeCombat(character, decision, timestamp, summary);
+      return executeCombat(
+        character,
+        decision,
+        timestamp,
+        summary,
+        missionStepsDiscovered,
+        secondaryMissionsDiscovered
+      );
 
     case "flee" as DecisionType:
       return executeFlee(character, timestamp);
@@ -167,7 +255,9 @@ function executeExplore(
   character: Character,
   decision: any,
   timestamp: Date,
-  summary: SimulationSummary
+  summary: SimulationSummary,
+  missionStepsDiscovered: string[],
+  secondaryMissionsDiscovered: string[]
 ): Activity {
   const newLocation = decision.location || character.current_location;
   const isNewLocation = !character.discovered_locations.includes(newLocation);
@@ -184,6 +274,22 @@ function executeExplore(
   const explorationXp = 5 + Math.floor(Math.random() * 10);
   character.experience += explorationXp;
   summary.totalXpGained += explorationXp;
+
+  // Check for mission discoveries (10% chance on exploration)
+  if (Math.random() < 0.1) {
+    // 20% chance for principal mission step discovery if active mission
+    if (character.active_principal_mission_id && Math.random() < 0.2) {
+      const stepId = `story_step_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      missionStepsDiscovered.push(stepId);
+      summary.majorEvents.push(`Discovered a clue about the principal mission!`);
+    }
+    // 30% chance for secondary mission discovery
+    else if (Math.random() < 0.3) {
+      const missionId = `secondary_mission_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      secondaryMissionsDiscovered.push(missionId);
+      summary.majorEvents.push(`Discovered a new secondary mission!`);
+    }
+  }
 
   return {
     timestamp: timestamp.toISOString(),
@@ -204,7 +310,9 @@ function executeCombat(
   character: Character,
   decision: any,
   timestamp: Date,
-  summary: SimulationSummary
+  summary: SimulationSummary,
+  missionStepsDiscovered: string[],
+  secondaryMissionsDiscovered: string[]
 ): Activity {
   const enemy = decision.targetEnemy;
   const combatResult = simulateCombat(character, enemy);
@@ -224,6 +332,16 @@ function executeCombat(
     // Add items to inventory
     if (combatResult.itemsFound.length > 0) {
       character.inventory.push(...combatResult.itemsFound);
+    }
+
+    // Check for mission progress after victory (5% chance)
+    if (Math.random() < 0.05) {
+      // Principal mission step discovery if active mission
+      if (character.active_principal_mission_id && Math.random() < 0.4) {
+        const stepId = `combat_step_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        missionStepsDiscovered.push(stepId);
+        summary.majorEvents.push(`Combat revealed a clue about the principal mission!`);
+      }
     }
 
     return {

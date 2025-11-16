@@ -29,44 +29,37 @@ class SupabaseApi @Inject constructor(
      */
     suspend fun runOfflineSimulation(characterId: String): Result<OfflineSimulationResponse> {
         return try {
-            // Try to refresh the session to ensure we have a valid access token
+            // Ensure we have a valid session
             var session = supabaseClient.auth.currentSessionOrNull()
 
             if (session == null) {
-                android.util.Log.e("SupabaseApi", "No session found - user needs to log in again")
-                return Result.failure(
-                    Exception("Session expired. Please log in again.")
-                )
+                // Try to load session from storage
+                try {
+                    supabaseClient.auth.loadFromStorage()
+                    session = supabaseClient.auth.currentSessionOrNull()
+                } catch (e: Exception) {
+                    return Result.failure(Exception("Session expired. Please log in again."))
+                }
+
+                if (session == null) {
+                    return Result.failure(Exception("Session expired. Please log in again."))
+                }
             }
 
-            // Try to refresh existing session (works for email-authenticated users)
+            // Refresh the session to ensure valid token
             try {
-                android.util.Log.d("SupabaseApi", "Refreshing session...")
                 supabaseClient.auth.refreshCurrentSession()
                 session = supabaseClient.auth.currentSessionOrNull()
-                android.util.Log.d("SupabaseApi", "Session refreshed successfully")
+                    ?: return Result.failure(Exception("Session refresh failed."))
             } catch (e: Exception) {
-                android.util.Log.e("SupabaseApi", "Session refresh failed: ${e.message}", e)
-                return Result.failure(
-                    Exception("Session refresh failed. Please log in again: ${e.message}")
-                )
+                return Result.failure(Exception("Session refresh failed: ${e.message}"))
             }
 
-            if (session == null) {
-                return Result.failure(
-                    Exception("Session refresh failed. Please log in again.")
-                )
-            }
-
-            // Log the request for debugging
-            android.util.Log.d("SupabaseApi", "Calling offline simulation for character: $characterId")
-            android.util.Log.d("SupabaseApi", "Session found, user: ${session.user?.id}")
-
+            // Call the Edge Function
             val response: HttpResponse = httpClient.post {
                 url("${supabaseConfig.url}/functions/v1/offline-simulation")
                 contentType(ContentType.Application.Json)
                 headers {
-                    // Supabase Edge Functions require both headers
                     append("Authorization", "Bearer ${session.accessToken}")
                     append("apikey", supabaseConfig.anonKey)
                 }
@@ -75,20 +68,15 @@ class SupabaseApi @Inject constructor(
 
             // Check HTTP status before deserializing
             if (response.status.value in 200..299) {
-                android.util.Log.d("SupabaseApi", "Offline simulation successful")
                 Result.success(response.body())
             } else {
                 val errorBody = response.body<String>()
-                android.util.Log.e("SupabaseApi", "Offline simulation failed: ${response.status.value} - $errorBody")
                 Result.failure(
-                    Exception("Offline simulation endpoint returned ${response.status.value}: $errorBody")
+                    Exception("Offline simulation failed: ${response.status.value} - $errorBody")
                 )
             }
         } catch (e: Exception) {
-            android.util.Log.e("SupabaseApi", "Offline simulation error", e)
-            Result.failure(
-                Exception("Offline simulation failed: ${e.message}", e)
-            )
+            Result.failure(Exception("Offline simulation failed: ${e.message}", e))
         }
     }
 

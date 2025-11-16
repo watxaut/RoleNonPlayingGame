@@ -63,12 +63,9 @@ class CharacterRepositoryImpl @Inject constructor(
 
             // Save to local database first
             characterDao.insertCharacter(entity)
-            logDebug("Character saved to local database")
 
-            // Sync to Supabase (with proper authentication handling)
+            // Sync to Supabase
             try {
-                // Use service role key to bypass RLS for now (development mode)
-                // In production, use proper authentication
                 val supabaseData = SupabaseCharacterDto(
                     id = character.id,
                     userId = character.userId,
@@ -103,13 +100,10 @@ class CharacterRepositoryImpl @Inject constructor(
                     lastActiveAt = character.lastActiveAt.toString()
                 )
 
-                logDebug("Attempting to sync character to Supabase")
-                val response = supabaseClient.from("characters").insert(supabaseData)
-                logDebug("Character synced to Supabase successfully")
+                supabaseClient.from("characters").insert(supabaseData)
             } catch (e: Exception) {
                 logError("Failed to sync character to Supabase, but saved locally", e)
                 // Don't fail the entire operation if Supabase sync fails
-                // Character is still saved locally
             }
 
             Result.success(character)
@@ -160,14 +154,12 @@ class CharacterRepositoryImpl @Inject constructor(
                     lastActiveAt = character.lastActiveAt.toString()
                 )
 
-                logDebug("Syncing character update to Supabase")
                 supabaseClient.from("characters")
                     .update(supabaseData) {
                         filter {
                             eq("id", character.id)
                         }
                     }
-                logDebug("Character update synced to Supabase")
             } catch (e: Exception) {
                 logError("Failed to sync character update to Supabase, but saved locally", e)
                 // Don't fail the entire operation
@@ -185,14 +177,12 @@ class CharacterRepositoryImpl @Inject constructor(
 
             // Delete from Supabase
             try {
-                logDebug("Deleting character from Supabase: $characterId")
                 supabaseClient.from("characters")
                     .delete {
                         filter {
                             eq("id", characterId)
                         }
                     }
-                logDebug("Character deleted from Supabase")
             } catch (e: Exception) {
                 logError("Failed to delete character from Supabase, but deleted locally", e)
                 // Don't fail the entire operation
