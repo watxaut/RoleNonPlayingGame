@@ -4,6 +4,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -26,6 +28,18 @@ sealed class BottomNavDestination(
         label = "Heroes"
     )
 
+    data object Leaderboard : BottomNavDestination(
+        route = "leaderboard",
+        icon = Icons.Default.Star,
+        label = "Leaderboard"
+    )
+
+    data object Objects : BottomNavDestination(
+        route = "objects",
+        icon = Icons.Default.ShoppingBag,
+        label = "Objects"
+    )
+
     data object Map : BottomNavDestination(
         route = "map",
         icon = Icons.Default.Place,
@@ -39,7 +53,7 @@ sealed class BottomNavDestination(
     )
 
     companion object {
-        val items = listOf(Heroes, Map, Profile)
+        val items = listOf(Heroes, Leaderboard, Objects, Map, Profile)
     }
 }
 
