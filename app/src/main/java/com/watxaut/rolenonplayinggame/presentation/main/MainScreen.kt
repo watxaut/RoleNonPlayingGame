@@ -11,11 +11,13 @@ import androidx.compose.ui.Modifier
 import com.watxaut.rolenonplayinggame.presentation.auth.ProfileScreen
 import com.watxaut.rolenonplayinggame.presentation.components.BottomNavigationBar
 import com.watxaut.rolenonplayinggame.presentation.home.HomeScreen
+import com.watxaut.rolenonplayinggame.presentation.leaderboard.LeaderboardScreen
 import com.watxaut.rolenonplayinggame.presentation.map.WorldMapScreen
+import com.watxaut.rolenonplayinggame.presentation.objects.ObjectsScreen
 
 /**
  * Main screen with bottom navigation
- * Contains Heroes, Map, and Profile tabs
+ * Contains Heroes, Leaderboard, Objects, Map, and Profile tabs
  */
 @Composable
 fun MainScreen(
@@ -40,6 +42,12 @@ fun MainScreen(
             "heroes" -> HomeScreen(
                 onNavigateToCharacterCreation = onNavigateToCharacterCreation,
                 onNavigateToGame = onNavigateToGame,
+                modifier = Modifier.padding(innerPadding)
+            )
+            "leaderboard" -> LeaderboardScreen(
+                modifier = Modifier.padding(innerPadding)
+            )
+            "objects" -> ObjectsScreen(
                 modifier = Modifier.padding(innerPadding)
             )
             "map" -> WorldMapScreen(

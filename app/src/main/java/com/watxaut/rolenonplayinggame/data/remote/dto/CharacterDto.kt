@@ -101,4 +101,92 @@ data class SupabaseCharacterDto(
 
     @SerialName("last_active_at")
     val lastActiveAt: String
-)
+) {
+    /**
+     * Convert DTO to domain model
+     */
+    fun toDomainModel(): com.watxaut.rolenonplayinggame.domain.model.Character {
+        return com.watxaut.rolenonplayinggame.domain.model.Character(
+            id = id,
+            userId = userId,
+            name = name,
+            level = level,
+            experience = experience,
+            strength = strength,
+            intelligence = intelligence,
+            agility = agility,
+            luck = luck,
+            charisma = charisma,
+            vitality = vitality,
+            currentHp = currentHp,
+            maxHp = maxHp,
+            currentLocation = currentLocation,
+            personalityTraits = com.watxaut.rolenonplayinggame.domain.model.PersonalityTraits(
+                courage = personalityCourage,
+                greed = personalityGreed,
+                curiosity = personalityCuriosity,
+                aggression = personalityAggression,
+                social = personalitySocial,
+                impulsive = personalityImpulsive
+            ),
+            jobClass = com.watxaut.rolenonplayinggame.domain.model.JobClass.valueOf(jobClass),
+            gold = gold,
+            inventory = parseJsonArray(inventory),
+            equipment = parseEquipmentLoadout(equippedItems),
+            discoveredLocations = parseJsonArray(discoveredLocations),
+            activeQuests = parseJsonArray(activeQuests),
+            activePrincipalMissionId = activePrincipalMissionId,
+            principalMissionStartedAt = principalMissionStartedAt?.let { java.time.Instant.parse(it) },
+            principalMissionCompletedCount = principalMissionCompletedCount,
+            createdAt = java.time.Instant.parse(createdAt),
+            lastActiveAt = java.time.Instant.parse(lastActiveAt)
+        )
+    }
+
+    private fun parseJsonArray(json: String): List<String> {
+        if (json.isEmpty() || json == "[]") return emptyList()
+        return json.trim('[', ']')
+            .split(",")
+            .map { it.trim().trim('"') }
+            .filter { it.isNotEmpty() }
+    }
+
+    private fun parseEquipmentLoadout(json: String): com.watxaut.rolenonplayinggame.domain.model.EquipmentLoadout {
+        if (json.isEmpty() || json == "{}") return com.watxaut.rolenonplayinggame.domain.model.EquipmentLoadout()
+
+        val equipmentIds = mutableMapOf<String, String>()
+        json.trim('{', '}')
+            .split(",")
+            .forEach { pair ->
+                val parts = pair.split(":")
+                if (parts.size == 2) {
+                    val key = parts[0].trim().trim('"')
+                    val value = parts[1].trim().trim('"')
+                    if (value.isNotEmpty() && value != "null") {
+                        equipmentIds[key] = value
+                    }
+                }
+            }
+
+        return com.watxaut.rolenonplayinggame.domain.model.EquipmentLoadout(
+            weaponMain = equipmentIds["weaponMain"]?.let {
+                com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getEquipmentById(it)
+            },
+            weaponOff = equipmentIds["weaponOff"]?.let {
+                com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getEquipmentById(it)
+            },
+            armor = equipmentIds["armor"]?.let {
+                com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getEquipmentById(it)
+            },
+            gloves = equipmentIds["gloves"]?.let {
+                com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getEquipmentById(it)
+            },
+            head = equipmentIds["head"]?.let {
+                com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getEquipmentById(it)
+            },
+            accessory = equipmentIds["accessory"]?.let {
+                com.watxaut.rolenonplayinggame.data.EquipmentDatabase.getEquipmentById(it)
+            }
+        )
+    }
+}

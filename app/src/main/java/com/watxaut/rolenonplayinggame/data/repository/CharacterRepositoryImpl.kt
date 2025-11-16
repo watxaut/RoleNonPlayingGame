@@ -248,6 +248,30 @@ class CharacterRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getAllCharacters(): Result<List<Character>> {
+        return try {
+            // Try to fetch from Supabase first for the most up-to-date leaderboard
+            try {
+                logDebug("Fetching all characters from Supabase for leaderboard")
+                val response = supabaseClient.from("characters")
+                    .select()
+                    .decodeList<com.watxaut.rolenonplayinggame.data.remote.dto.SupabaseCharacterDto>()
+
+                val characters = response.map { it.toDomainModel() }
+                logDebug("Fetched ${characters.size} characters from Supabase")
+                Result.success(characters)
+            } catch (e: Exception) {
+                logError("Failed to fetch from Supabase, falling back to local database", e)
+                // Fallback to local database
+                val localCharacters = characterDao.getAllCharacters().map { it.toDomainModel() }
+                Result.success(localCharacters)
+            }
+        } catch (e: Exception) {
+            logError("Failed to fetch all characters", e)
+            Result.failure(e)
+        }
+    }
+
     /**
      * Convert list to JSON array string for Supabase
      */

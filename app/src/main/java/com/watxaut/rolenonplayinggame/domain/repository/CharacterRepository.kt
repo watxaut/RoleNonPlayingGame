@@ -57,4 +57,9 @@ interface CharacterRepository {
      * Update last active timestamp
      */
     suspend fun updateLastActiveTime(characterId: String): Result<Unit>
+
+    /**
+     * Get all characters from all users (for leaderboard)
+     */
+    suspend fun getAllCharacters(): Result<List<Character>>
 }
