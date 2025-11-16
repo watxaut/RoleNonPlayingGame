@@ -20,11 +20,11 @@ import com.watxaut.rolenonplayinggame.data.remote.dto.OfflineSimulationResponse
 import kotlin.math.roundToInt
 
 /**
- * Screen showing "While you were away" summary
+ * Screen showing "While you were away" summary for multiple characters
  */
 @Composable
 fun OfflineSummaryScreen(
-    simulationResponse: OfflineSimulationResponse,
+    simulationResponses: List<OfflineSimulationResponse>,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -40,28 +40,15 @@ fun OfflineSummaryScreen(
         ) {
             // Header
             item {
-                HeaderSection(simulationResponse)
+                MainHeader(
+                    characterCount = simulationResponses.size,
+                    totalHoursOffline = simulationResponses.firstOrNull()?.realHoursOffline ?: 0.0
+                )
             }
 
-            // Statistics Summary
-            item {
-                StatisticsSummary(simulationResponse)
-            }
-
-            // Major Events
-            if (simulationResponse.summary.majorEvents.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "Major Events",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                    )
-                }
-
-                items(simulationResponse.summary.majorEvents) { event ->
-                    MajorEventCard(event)
-                }
+            // Character summaries
+            items(simulationResponses) { response ->
+                CharacterSummaryCard(response)
             }
 
             // Continue Button
@@ -80,7 +67,10 @@ fun OfflineSummaryScreen(
 }
 
 @Composable
-private fun HeaderSection(response: OfflineSimulationResponse) {
+private fun MainHeader(
+    characterCount: Int,
+    totalHoursOffline: Double
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -112,24 +102,21 @@ private fun HeaderSection(response: OfflineSimulationResponse) {
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Your character was busy for ${response.realHoursOffline.roundToInt()} hours",
+                text = if (characterCount == 1) {
+                    "Your character was busy for ${totalHoursOffline.roundToInt()} hours"
+                } else {
+                    "Your $characterCount characters were busy for ${totalHoursOffline.roundToInt()} hours"
+                },
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-
-            Text(
-                text = "(${response.gameHoursSimulated} game hours simulated)",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                textAlign = TextAlign.Center
             )
         }
     }
 }
 
 @Composable
-private fun StatisticsSummary(response: OfflineSimulationResponse) {
-    val summary = response.summary
-
+private fun CharacterSummaryCard(response: OfflineSimulationResponse) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -139,95 +126,189 @@ private fun StatisticsSummary(response: OfflineSimulationResponse) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Character name header
             Text(
-                text = "Summary",
+                text = response.characterName ?: "Unknown Hero",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
 
-            // Character State
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                StatItem(
-                    icon = Icons.Default.Star,
-                    label = "Level",
-                    value = response.characterState.level.toString(),
-                    color = Color(0xFFFFD700) // Gold
-                )
-                StatItem(
-                    icon = Icons.Default.Favorite,
-                    label = "HP",
-                    value = "${response.characterState.currentHp}/${response.characterState.maxHp}",
-                    color = Color(0xFFE74C3C) // Red
-                )
-            }
+            Text(
+                text = "${response.gameHoursSimulated} game hours simulated",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
 
             Divider()
 
-            // Combat Stats
-            if (summary.totalCombats > 0) {
-                SummaryRow(
-                    icon = Icons.Default.Swords,
-                    label = "Battles",
-                    value = "${summary.combatsWon}W / ${summary.combatsLost}L"
-                )
+            // Statistics Summary
+            StatisticsSummary(response)
+
+            // Mission Progress (if any)
+            if (response.missionProgress != null) {
+                MissionProgressSection(response.missionProgress)
             }
 
-            // Experience and Gold
-            if (summary.totalXpGained > 0) {
-                SummaryRow(
-                    icon = Icons.Default.Star,
-                    label = "XP Gained",
-                    value = "+${summary.totalXpGained}"
+            // Major Events
+            if (response.summary.majorEvents.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Major Events",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    response.summary.majorEvents.take(5).forEach { event ->
+                        MajorEventCard(event)
+                    }
+                    if (response.summary.majorEvents.size > 5) {
+                        Text(
+                            text = "...and ${response.summary.majorEvents.size - 5} more events",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
             }
+        }
+    }
+}
 
-            if (summary.totalGoldGained > 0) {
-                SummaryRow(
-                    icon = Icons.Default.ShoppingCart,
-                    label = "Gold Earned",
-                    value = "+${summary.totalGoldGained}"
-                )
-            }
+@Composable
+private fun MissionProgressSection(missionProgress: com.watxaut.rolenonplayinggame.data.remote.dto.MissionProgressDto) {
+    val hasProgress = missionProgress.principalMissionSteps > 0 ||
+            missionProgress.secondaryMissionsDiscovered > 0 ||
+            missionProgress.loreDiscovered > 0
 
-            // Levels Gained
-            if (summary.levelsGained > 0) {
-                SummaryRow(
-                    icon = Icons.Default.KeyboardArrowUp,
-                    label = "Levels Gained",
-                    value = "+${summary.levelsGained}",
-                    highlighted = true
-                )
-            }
+    if (!hasProgress) return
 
-            // Locations and Items
-            if (summary.locationsDiscovered > 0) {
-                SummaryRow(
-                    icon = Icons.Default.Place,
-                    label = "New Locations",
-                    value = summary.locationsDiscovered.toString()
-                )
-            }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Mission Progress",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
 
-            if (summary.itemsFound > 0) {
-                SummaryRow(
-                    icon = Icons.Default.Inventory,
-                    label = "Items Found",
-                    value = summary.itemsFound.toString()
-                )
-            }
+        if (missionProgress.principalMissionSteps > 0) {
+            SummaryRow(
+                icon = Icons.Default.Star,
+                label = "Principal Mission Steps",
+                value = "+${missionProgress.principalMissionSteps}",
+                highlighted = true
+            )
+        }
 
-            // Deaths (if any)
-            if (summary.deaths > 0) {
-                SummaryRow(
-                    icon = Icons.Default.Warning,
-                    label = "Deaths",
-                    value = summary.deaths.toString(),
-                    warning = true
-                )
-            }
+        if (missionProgress.secondaryMissionsDiscovered > 0) {
+            SummaryRow(
+                icon = Icons.Default.Notifications,
+                label = "New Secondary Missions",
+                value = "+${missionProgress.secondaryMissionsDiscovered}",
+                highlighted = true
+            )
+        }
+
+        if (missionProgress.loreDiscovered > 0) {
+            SummaryRow(
+                icon = Icons.Default.Info,
+                label = "Lore Discovered",
+                value = "+${missionProgress.loreDiscovered}",
+                highlighted = true
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatisticsSummary(response: OfflineSimulationResponse) {
+    val summary = response.summary
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Character State
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            StatItem(
+                icon = Icons.Default.Star,
+                label = "Level",
+                value = response.characterState.level.toString(),
+                color = Color(0xFFFFD700) // Gold
+            )
+            StatItem(
+                icon = Icons.Default.Favorite,
+                label = "HP",
+                value = "${response.characterState.currentHp}/${response.characterState.maxHp}",
+                color = Color(0xFFE74C3C) // Red
+            )
+        }
+
+        // Combat Stats
+        if (summary.totalCombats > 0) {
+            SummaryRow(
+                icon = Icons.Default.Swords,
+                label = "Battles",
+                value = "${summary.combatsWon}W / ${summary.combatsLost}L"
+            )
+        }
+
+        // Experience and Gold
+        if (summary.totalXpGained > 0) {
+            SummaryRow(
+                icon = Icons.Default.Star,
+                label = "XP Gained",
+                value = "+${summary.totalXpGained}"
+            )
+        }
+
+        if (summary.totalGoldGained > 0) {
+            SummaryRow(
+                icon = Icons.Default.ShoppingCart,
+                label = "Gold Earned",
+                value = "+${summary.totalGoldGained}"
+            )
+        }
+
+        // Levels Gained
+        if (summary.levelsGained > 0) {
+            SummaryRow(
+                icon = Icons.Default.KeyboardArrowUp,
+                label = "Levels Gained",
+                value = "+${summary.levelsGained}",
+                highlighted = true
+            )
+        }
+
+        // Locations and Items
+        if (summary.locationsDiscovered > 0) {
+            SummaryRow(
+                icon = Icons.Default.Place,
+                label = "New Locations",
+                value = summary.locationsDiscovered.toString()
+            )
+        }
+
+        if (summary.itemsFound > 0) {
+            SummaryRow(
+                icon = Icons.Default.Inventory,
+                label = "Items Found",
+                value = summary.itemsFound.toString()
+            )
+        }
+
+        // Deaths (if any)
+        if (summary.deaths > 0) {
+            SummaryRow(
+                icon = Icons.Default.Warning,
+                label = "Deaths",
+                value = summary.deaths.toString(),
+                warning = true
+            )
         }
     }
 }

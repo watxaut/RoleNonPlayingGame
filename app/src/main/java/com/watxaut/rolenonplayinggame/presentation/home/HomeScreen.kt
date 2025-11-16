@@ -135,7 +135,7 @@ fun HomeScreen(
                 properties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
                 OfflineSummaryScreen(
-                    simulationResponse = state.response,
+                    simulationResponses = state.responses,
                     onDismiss = { viewModel.dismissSimulationSummary() }
                 )
             }

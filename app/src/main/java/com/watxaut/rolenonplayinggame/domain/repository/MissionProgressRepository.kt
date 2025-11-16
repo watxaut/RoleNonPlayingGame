@@ -117,7 +117,7 @@ interface MissionProgressRepository {
     /**
      * Add a new lore discovery for a character
      */
-    suspend fun addLoreDiscovery(loreDiscovery: LoreDiscovery): Result<Unit>
+    suspend fun addLoreDiscovery(characterId: String, loreDiscovery: LoreDiscovery): Result<Unit>
 
     /**
      * Get all lore discoveries for a character

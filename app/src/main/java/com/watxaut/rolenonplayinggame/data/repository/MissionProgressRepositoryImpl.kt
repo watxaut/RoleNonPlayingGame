@@ -369,24 +369,7 @@ class MissionProgressRepositoryImpl @Inject constructor(
     // LORE DISCOVERIES
     // ============================================================
 
-    override suspend fun addLoreDiscovery(loreDiscovery: LoreDiscovery): Result<Unit> {
-        return try {
-            // Extract characterId from loreDiscovery.id (format: "characterId_loreId")
-            // Actually, we need characterId to be passed separately
-            // For now, we'll assume the id contains the characterId
-            // This should be refactored to accept characterId as a parameter
-            logError("addLoreDiscovery called but characterId extraction not implemented")
-            Result.failure(IllegalArgumentException("characterId must be provided separately"))
-        } catch (e: Exception) {
-            logError("Failed to add lore discovery", e)
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Add lore discovery with explicit character ID
-     */
-    suspend fun addLoreDiscovery(characterId: String, loreDiscovery: LoreDiscovery): Result<Unit> {
+    override suspend fun addLoreDiscovery(characterId: String, loreDiscovery: LoreDiscovery): Result<Unit> {
         return try {
             logDebug("Adding lore discovery for character $characterId: ${loreDiscovery.title}")
 

@@ -163,24 +163,60 @@ class OfflineSimulationManager @Inject constructor(
 
         logDebug("Offline for $timeOfflineMinutes minutes, preparing simulation")
 
-        // Get active character (for now, just get the first character)
-        // TODO: Support multiple characters and select the active one
+        // Get all characters for this user
         val characters = characterDao.getAllCharacters()
         if (characters.isEmpty()) {
             logDebug("No characters found, skipping simulation")
             return
         }
 
-        val character = characters.first()
+        logDebug("Running simulation for ${characters.size} character(s)")
 
-        // Retry simulation with exponential backoff to handle network initialization
+        // Run simulations for all characters
         retryWithBackoff(
             maxRetries = MAX_RETRIES,
             initialDelayMs = INITIAL_RETRY_DELAY_MS,
             operation = {
-                runOfflineSimulation(character.id)
+                runOfflineSimulationForAllCharacters(characters.map { it.id })
             }
         )
+    }
+
+    /**
+     * Run offline simulation for all characters
+     */
+    private suspend fun runOfflineSimulationForAllCharacters(characterIds: List<String>) {
+        _simulationState.value = OfflineSimulationState.Loading
+
+        val responses = mutableListOf<OfflineSimulationResponse>()
+        var hasError = false
+        var errorMessage = ""
+
+        for (characterId in characterIds) {
+            val result = supabaseApi.runOfflineSimulation(characterId)
+
+            result.fold(
+                onSuccess = { response ->
+                    responses.add(response)
+                    // Update local character with new state
+                    updateCharacterFromSimulation(characterId, response)
+                },
+                onFailure = { error ->
+                    logError("Offline simulation failed for character $characterId", error)
+                    hasError = true
+                    errorMessage = error.message ?: "Unknown error"
+                    // Continue with other characters even if one fails
+                }
+            )
+        }
+
+        if (responses.isNotEmpty()) {
+            logDebug("Offline simulation completed for ${responses.size} character(s)")
+            _simulationState.value = OfflineSimulationState.Success(responses)
+        } else if (hasError) {
+            _simulationState.value = OfflineSimulationState.Error(errorMessage)
+            throw Exception(errorMessage)
+        }
     }
 
     /**
@@ -230,33 +266,6 @@ class OfflineSimulationManager @Inject constructor(
         logDebug("No network connection after $maxRetries retries, giving up")
     }
 
-    /**
-     * Run offline simulation for a specific character
-     * Note: SupabaseApi handles session refresh and authentication, so we don't check auth here
-     */
-    suspend fun runOfflineSimulation(characterId: String) {
-        _simulationState.value = OfflineSimulationState.Loading
-
-        val result = supabaseApi.runOfflineSimulation(characterId)
-
-        result.fold(
-            onSuccess = { response ->
-                logDebug("Offline simulation completed successfully")
-                _simulationState.value = OfflineSimulationState.Success(response)
-
-                // Update local character with new state
-                updateCharacterFromSimulation(characterId, response)
-            },
-            onFailure = { error ->
-                logError("Offline simulation failed", error)
-                _simulationState.value = OfflineSimulationState.Error(
-                    error.message ?: "Unknown error"
-                )
-                // Re-throw so retry logic knows it failed
-                throw error
-            }
-        )
-    }
 
     /**
      * Update local character database with simulation results

@@ -4,11 +4,15 @@ import com.watxaut.rolenonplayinggame.data.repository.PrincipalMissionsRepositor
 import com.watxaut.rolenonplayinggame.domain.model.Character
 import com.watxaut.rolenonplayinggame.domain.model.CharacterStats
 import com.watxaut.rolenonplayinggame.domain.model.JobClass
+import com.watxaut.rolenonplayinggame.domain.model.LoreDiscovery
+import com.watxaut.rolenonplayinggame.domain.model.LoreSourceType
 import com.watxaut.rolenonplayinggame.domain.model.PersonalityTraits
+import com.watxaut.rolenonplayinggame.domain.model.PredefinedLore
 import com.watxaut.rolenonplayinggame.domain.model.PrincipalMissionProgress
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
 import com.watxaut.rolenonplayinggame.domain.repository.MissionProgressRepository
 import java.time.Instant
+import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -91,6 +95,29 @@ class CreateCharacterUseCase @Inject constructor(
             if (missionResult.isFailure) {
                 println("⚠️ Failed to assign mission progress in Supabase: ${missionResult.exceptionOrNull()?.message}")
                 // Don't fail character creation if mission assignment fails
+            }
+        }
+
+        // Add initial lore discoveries
+        val defaultLore = PredefinedLore.getDefaultUnlockedLore()
+        println("📚 Adding ${defaultLore.size} initial lore entries for ${character.name}")
+        defaultLore.forEach { loreEntry ->
+            val loreDiscovery = LoreDiscovery(
+                id = UUID.randomUUID().toString(),
+                category = loreEntry.category,
+                title = loreEntry.title,
+                content = loreEntry.content,
+                discoveredAt = System.currentTimeMillis(),
+                sourceType = LoreSourceType.LOCATION_DISCOVERY, // Initial lore from arriving at Aethermoor
+                sourceId = "character_creation"
+            )
+
+            val loreResult = missionProgressRepository.addLoreDiscovery(character.id, loreDiscovery)
+            if (loreResult.isFailure) {
+                println("⚠️  Failed to add initial lore '${loreEntry.title}': ${loreResult.exceptionOrNull()?.message}")
+                // Don't fail character creation if lore discovery fails
+            } else {
+                println("📖 Added initial lore: ${loreEntry.title}")
             }
         }
 

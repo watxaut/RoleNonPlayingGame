@@ -1207,7 +1207,7 @@ fun PrincipalMissionCard(
  */
 @Composable
 fun LoreTab(
-    discoveredLore: List<String>,
+    discoveredLore: List<com.watxaut.rolenonplayinggame.domain.model.LoreDiscovery>,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(modifier = modifier) {
@@ -1219,14 +1219,14 @@ fun LoreTab(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Your hero has discovered ${discoveredLore.size} lore fragments",
+                text = "Your hero has discovered ${discoveredLore.size} lore entries",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        items(discoveredLore.size) { index ->
+        items(discoveredLore) { lore ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1236,19 +1236,49 @@ fun LoreTab(
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    // Category badge
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = lore.category.displayName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Lore title
                     Text(
-                        text = "Lore Fragment ${index + 1}",
+                        text = lore.title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
+
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    // Lore content
                     Text(
-                        text = discoveredLore[index],
+                        text = lore.content,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                         ),
                         color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Discovery source
+                    Text(
+                        text = "Discovered: ${lore.sourceType.name.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -1257,7 +1287,7 @@ fun LoreTab(
         if (discoveredLore.isEmpty()) {
             item {
                 Text(
-                    text = "No lore discovered yet. Complete principal mission steps to uncover the mysteries of Aethermoor.",
+                    text = "No lore discovered yet. Your character started with knowledge of Aethermoor - check if the data has loaded.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

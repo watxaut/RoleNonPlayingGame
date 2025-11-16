@@ -7,6 +7,7 @@ import com.watxaut.rolenonplayinggame.core.ai.DecisionContext
 import com.watxaut.rolenonplayinggame.data.repository.PrincipalMissionsRepository
 import com.watxaut.rolenonplayinggame.domain.model.Activity
 import com.watxaut.rolenonplayinggame.domain.model.Character
+import com.watxaut.rolenonplayinggame.domain.model.LoreDiscovery
 import com.watxaut.rolenonplayinggame.domain.repository.ActivityRepository
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
 import com.watxaut.rolenonplayinggame.domain.repository.MissionProgressRepository
@@ -80,6 +81,8 @@ class GameViewModel @Inject constructor(
                             }
                             // Load mission progress on first load
                             loadMissionProgress(character)
+                            // Load lore discoveries
+                            loadLoreDiscoveries(character.id)
                         }
                     } else {
                         _uiState.update {
@@ -339,6 +342,17 @@ class GameViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Load lore discoveries for the character
+     */
+    private fun loadLoreDiscoveries(characterId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            missionProgressRepository.getLoreDiscoveries(characterId).onSuccess { loreList ->
+                _uiState.update { it.copy(discoveredLore = loreList) }
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         // Cancel all running jobs when ViewModel is cleared
@@ -356,7 +370,7 @@ data class GameUiState(
     val activityLog: List<Activity> = emptyList(),
     val currentAction: String = "Waiting for character...",
     val principalMissionProgress: String? = null,
-    val discoveredLore: List<String> = emptyList(),
+    val discoveredLore: List<LoreDiscovery> = emptyList(),
     val secondaryMissions: List<String> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null,
