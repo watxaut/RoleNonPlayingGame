@@ -8,8 +8,15 @@ import android.util.Log
 import com.watxaut.rolenonplayinggame.BuildConfig
 import com.watxaut.rolenonplayinggame.data.local.dao.CharacterDao
 import com.watxaut.rolenonplayinggame.data.remote.api.SupabaseApi
+import com.watxaut.rolenonplayinggame.data.remote.dto.ActivityDto
 import com.watxaut.rolenonplayinggame.data.remote.dto.OfflineSimulationResponse
+import com.watxaut.rolenonplayinggame.domain.model.Activity
+import com.watxaut.rolenonplayinggame.domain.model.ActivityRewards
+import com.watxaut.rolenonplayinggame.domain.model.ActivityType
+import com.watxaut.rolenonplayinggame.domain.repository.ActivityRepository
 import com.watxaut.rolenonplayinggame.domain.repository.AuthRepository
+import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
+import com.watxaut.rolenonplayinggame.domain.repository.MissionProgressRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +34,10 @@ class OfflineSimulationManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val characterDao: CharacterDao,
     private val supabaseApi: SupabaseApi,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val characterRepository: CharacterRepository,
+    private val activityRepository: ActivityRepository,
+    private val missionProgressRepository: MissionProgressRepository
 ) {
 
     private val prefs: SharedPreferences = context.getSharedPreferences(
@@ -269,26 +279,111 @@ class OfflineSimulationManager @Inject constructor(
 
     /**
      * Update local character database with simulation results
+     * Also saves activities and syncs everything to Supabase
      */
     private suspend fun updateCharacterFromSimulation(
         characterId: String,
         response: OfflineSimulationResponse
     ) {
         try {
-            val character = characterDao.getCharacterById(characterId)
+            // 1. Save activities to database
+            if (response.activities.isNotEmpty()) {
+                val activities = response.activities.map { dto ->
+                    convertActivityDtoToActivity(characterId, dto)
+                }
+                activityRepository.logActivities(activities).onFailure { error ->
+                    logError("Failed to save activities", error)
+                }
+                logDebug("Saved ${activities.size} activities")
+            }
+
+            // 2. Update mission progress if available
+            response.missionProgress?.let { missionProgress ->
+                // Note: The server returns counts, not actual mission data
+                // In a future enhancement, we could use these counts for analytics
+                logDebug("Mission progress: ${missionProgress.principalMissionSteps} steps, " +
+                        "${missionProgress.secondaryMissionsDiscovered} secondary missions, " +
+                        "${missionProgress.loreDiscovered} lore discovered")
+            }
+
+            // 3. Get the full character and update with simulation results
+            val character = characterRepository.getCharacterById(characterId)
             if (character != null) {
                 val updatedCharacter = character.copy(
                     level = response.characterState.level,
                     experience = response.characterState.experience,
                     gold = response.characterState.gold,
                     currentHp = response.characterState.currentHp,
-                    maxHp = response.characterState.maxHp
+                    maxHp = response.characterState.maxHp,
+                    lastActiveAt = Instant.now()
                 )
-                characterDao.updateCharacter(updatedCharacter)
-                logDebug("Updated character with simulation results")
+
+                // 4. Sync updated character to both local DB and Supabase
+                characterRepository.updateCharacter(updatedCharacter).onFailure { error ->
+                    logError("Failed to sync character to Supabase", error)
+                    // Still update locally via DAO as fallback
+                    try {
+                        val entity = characterDao.getCharacterById(characterId)
+                        if (entity != null) {
+                            characterDao.updateCharacter(entity.copy(
+                                level = response.characterState.level,
+                                experience = response.characterState.experience,
+                                gold = response.characterState.gold,
+                                currentHp = response.characterState.currentHp,
+                                maxHp = response.characterState.maxHp
+                            ))
+                        }
+                    } catch (e: Exception) {
+                        logError("Failed to update character locally", e)
+                    }
+                }
+
+                logDebug("Updated and synced character with simulation results")
+            } else {
+                logError("Character not found: $characterId")
             }
         } catch (e: Exception) {
             logError("Failed to update character from simulation", e)
+        }
+    }
+
+    /**
+     * Convert ActivityDto from server to Activity domain model
+     */
+    private fun convertActivityDtoToActivity(characterId: String, dto: ActivityDto): Activity {
+        return Activity(
+            characterId = characterId,
+            timestamp = Instant.parse(dto.timestamp),
+            type = mapActivityType(dto.activityType),
+            description = dto.description,
+            isMajorEvent = dto.isMajorEvent,
+            rewards = dto.rewards?.let { rewards ->
+                ActivityRewards(
+                    experience = rewards.xp ?: 0,
+                    gold = rewards.gold ?: 0,
+                    items = rewards.items?.mapNotNull { it["name"] } ?: emptyList()
+                )
+            },
+            metadata = dto.metadata ?: emptyMap()
+        )
+    }
+
+    /**
+     * Map activity type string from server to ActivityType enum
+     */
+    private fun mapActivityType(activityType: String): ActivityType {
+        return when (activityType.uppercase()) {
+            "COMBAT" -> ActivityType.COMBAT
+            "EXPLORATION" -> ActivityType.EXPLORATION
+            "QUEST" -> ActivityType.QUEST
+            "SOCIAL" -> ActivityType.SOCIAL
+            "REST" -> ActivityType.REST
+            "SHOPPING" -> ActivityType.SHOPPING
+            "LEVEL_UP" -> ActivityType.LEVEL_UP
+            "DEATH" -> ActivityType.DEATH
+            "LOOT" -> ActivityType.LOOT
+            "TRAVEL" -> ActivityType.TRAVEL
+            else -> ActivityType.IDLE
         }
     }
 
