@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,15 +48,15 @@ fun HomeScreen(
     val simulationState by viewModel.simulationState.collectAsState()
     val characters by viewModel.characters.collectAsState()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = if (characters.isEmpty()) Arrangement.Center else Arrangement.Top
-    ) {
-        if (characters.isEmpty()) {
-            // Show welcome message when no characters exist
+    if (characters.isEmpty()) {
+        // Show welcome message when no characters exist (centered)
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
             Text(
                 text = "Role Non-Playing Game",
                 style = MaterialTheme.typography.headlineLarge,
@@ -77,19 +79,32 @@ fun HomeScreen(
             ) {
                 Text("Create New Character")
             }
-        } else {
-            // Show character list
-            Spacer(modifier = Modifier.height(16.dp))
+        }
+    } else {
+        // Show scrollable character list
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
-            Text(
-                text = "Your Characters",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
+            item {
+                Text(
+                    text = "Your Characters (${characters.size}/5)",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
+            }
 
-            characters.forEach { character ->
+            items(characters) { character ->
                 CharacterListItem(
                     character = character,
                     onClick = { onNavigateToGame(character.id) }
@@ -97,12 +112,32 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
-            Button(
-                onClick = onNavigateToCharacterCreation
-            ) {
-                Text("Create Another Character")
+            item {
+                val hasReachedLimit = characters.size >= 5
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Button(
+                        onClick = onNavigateToCharacterCreation,
+                        enabled = !hasReachedLimit
+                    ) {
+                        Text("Create Another Character")
+                    }
+
+                    if (hasReachedLimit) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Maximum 5 characters reached",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
             }
         }
     }

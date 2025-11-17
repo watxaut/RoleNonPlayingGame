@@ -11,6 +11,7 @@ import com.watxaut.rolenonplayinggame.domain.model.PredefinedLore
 import com.watxaut.rolenonplayinggame.domain.model.PrincipalMissionProgress
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
 import com.watxaut.rolenonplayinggame.domain.repository.MissionProgressRepository
+import kotlinx.coroutines.flow.first
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
@@ -24,6 +25,10 @@ class CreateCharacterUseCase @Inject constructor(
     private val missionProgressRepository: MissionProgressRepository
 ) {
 
+    companion object {
+        const val MAX_CHARACTERS_PER_USER = 5
+    }
+
     /**
      * Creates a new character with the given parameters.
      * @return Result containing the created Character or an error
@@ -34,6 +39,14 @@ class CreateCharacterUseCase @Inject constructor(
         jobClass: JobClass,
         stats: CharacterStats
     ): Result<Character> {
+        // Check if user has reached the character limit
+        val existingCharacters = characterRepository.getCharactersByUserId(userId).first()
+        if (existingCharacters.size >= MAX_CHARACTERS_PER_USER) {
+            return Result.failure(
+                IllegalStateException("Maximum of $MAX_CHARACTERS_PER_USER characters per account reached")
+            )
+        }
+
         // Validate name
         if (name.isBlank()) {
             return Result.failure(IllegalArgumentException("Character name cannot be blank"))
