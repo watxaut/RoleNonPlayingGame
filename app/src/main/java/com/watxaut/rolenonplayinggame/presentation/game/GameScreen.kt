@@ -158,8 +158,11 @@ fun GameScreen(
                 Column(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Tab Row
-                    TabRow(selectedTabIndex = selectedTabIndex) {
+                    // Tab Row (scrollable)
+                    androidx.compose.material3.ScrollableTabRow(
+                        selectedTabIndex = selectedTabIndex,
+                        edgePadding = 0.dp
+                    ) {
                         Tab(
                             selected = selectedTabIndex == 0,
                             onClick = { selectedTabIndex = 0 },
@@ -463,18 +466,26 @@ fun CharacterStatsCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Stats (with equipment bonuses)
+            // Stats (with equipment bonuses) - 2 columns for better layout
             val equipmentBonuses = character.equipment.getTotalBonuses()
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                StatChipWithBonus("STR", character.strength, equipmentBonuses.strength)
-                StatChipWithBonus("INT", character.intelligence, equipmentBonuses.intelligence)
-                StatChipWithBonus("AGI", character.agility, equipmentBonuses.agility)
-                StatChipWithBonus("LUK", character.luck, equipmentBonuses.luck)
-                StatChipWithBonus("CHA", character.charisma, equipmentBonuses.charisma)
-                StatChipWithBonus("VIT", character.vitality, equipmentBonuses.vitality)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    StatChipWithBonus("STR", character.strength, equipmentBonuses.strength)
+                    StatChipWithBonus("INT", character.intelligence, equipmentBonuses.intelligence)
+                    StatChipWithBonus("AGI", character.agility, equipmentBonuses.agility)
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    StatChipWithBonus("VIT", character.vitality, equipmentBonuses.vitality)
+                    StatChipWithBonus("LUK", character.luck, equipmentBonuses.luck)
+                    StatChipWithBonus("CHA", character.charisma, equipmentBonuses.charisma)
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))

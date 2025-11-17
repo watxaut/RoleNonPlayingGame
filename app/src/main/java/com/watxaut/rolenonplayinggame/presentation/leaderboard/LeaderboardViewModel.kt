@@ -36,8 +36,11 @@ class LeaderboardViewModel @Inject constructor(
 
             characterRepository.getAllCharacters()
                 .onSuccess { characters ->
-                    // Sort by experience descending
-                    val sortedCharacters = characters.sortedByDescending { it.experience }
+                    // Sort by level descending, then by experience descending
+                    val sortedCharacters = characters.sortedWith(
+                        compareByDescending<Character> { it.level }
+                            .thenByDescending { it.experience }
+                    )
                     _uiState.value = LeaderboardUiState.Success(sortedCharacters)
                 }
                 .onFailure { error ->
