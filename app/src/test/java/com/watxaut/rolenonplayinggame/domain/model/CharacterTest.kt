@@ -70,10 +70,12 @@ class CharacterTest {
             initialStats = CharacterStats.default().toMap()
         )
 
+        // Using exponential formula: 100 * (level ^ 1.5)
         assertEquals("Level 1 needs 100 XP", 100L, character.experienceForNextLevel())
 
         val level5Character = character.copy(level = 5)
-        assertEquals("Level 5 needs 500 XP", 500L, level5Character.experienceForNextLevel())
+        // Level 5: 100 * (5 ^ 1.5) = 1118.03... ≈ 1118
+        assertEquals("Level 5 needs 1118 XP", 1118L, level5Character.experienceForNextLevel())
     }
 
     @Test

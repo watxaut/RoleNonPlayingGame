@@ -297,13 +297,16 @@ class OfflineSimulationManager @Inject constructor(
                 logDebug("Saved ${activities.size} activities")
             }
 
-            // 2. Update mission progress if available
+            // 2. Reload mission progress from database (server already saved it)
             response.missionProgress?.let { missionProgress ->
-                // Note: The server returns counts, not actual mission data
-                // In a future enhancement, we could use these counts for analytics
                 logDebug("Mission progress: ${missionProgress.principalMissionSteps} steps, " +
                         "${missionProgress.secondaryMissionsDiscovered} secondary missions, " +
                         "${missionProgress.loreDiscovered} lore discovered")
+
+                // The offline simulation edge function already saved mission progress to Supabase.
+                // The mission progress is tracked in the principal_mission_progress table
+                // and will be automatically refreshed when the user views the character.
+                // No additional action needed here - just logging for visibility.
             }
 
             // 3. Get the full character and update with simulation results
@@ -315,6 +318,13 @@ class OfflineSimulationManager @Inject constructor(
                     gold = response.characterState.gold,
                     currentHp = response.characterState.currentHp,
                     maxHp = response.characterState.maxHp,
+                    // Update stats that were changed during level-ups
+                    strength = response.characterState.strength,
+                    intelligence = response.characterState.intelligence,
+                    agility = response.characterState.agility,
+                    luck = response.characterState.luck,
+                    charisma = response.characterState.charisma,
+                    vitality = response.characterState.vitality,
                     lastActiveAt = Instant.now()
                 )
 
@@ -330,7 +340,13 @@ class OfflineSimulationManager @Inject constructor(
                                 experience = response.characterState.experience,
                                 gold = response.characterState.gold,
                                 currentHp = response.characterState.currentHp,
-                                maxHp = response.characterState.maxHp
+                                maxHp = response.characterState.maxHp,
+                                strength = response.characterState.strength,
+                                intelligence = response.characterState.intelligence,
+                                agility = response.characterState.agility,
+                                luck = response.characterState.luck,
+                                charisma = response.characterState.charisma,
+                                vitality = response.characterState.vitality
                             ))
                         }
                     } catch (e: Exception) {

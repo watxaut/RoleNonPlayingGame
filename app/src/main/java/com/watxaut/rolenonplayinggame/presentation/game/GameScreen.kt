@@ -212,8 +212,8 @@ fun GameScreen(
                                 .fillMaxSize()
                                 .padding(16.dp)
                         )
-                        3 -> SecondaryMissionsTab(
-                            secondaryMissions = uiState.secondaryMissions,
+                        3 -> MissionsTab(
+                            missions = uiState.missions,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(16.dp)
@@ -1312,73 +1312,151 @@ fun LoreTab(
 }
 
 /**
- * Secondary Missions tab showing active and completed missions
+ * Missions tab showing active principal and secondary missions
  */
 @Composable
-fun SecondaryMissionsTab(
-    secondaryMissions: List<String>,
+fun MissionsTab(
+    missions: List<MissionDisplay>,
     modifier: Modifier = Modifier
 ) {
-    var selectedMission by remember { mutableStateOf<String?>(null) }
+    var selectedMission by remember { mutableStateOf<MissionDisplay?>(null) }
 
     Column(modifier = modifier) {
         Text(
-            text = "Secondary Missions",
+            text = "Missions",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "${secondaryMissions.size} active missions",
+            text = "${missions.size} active mission${if (missions.size != 1) "s" else ""}",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(modifier = Modifier.weight(1f)) {
-            items(secondaryMissions.size) { index ->
+            items(missions) { mission ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
-                        .clickable { selectedMission = secondaryMissions[index] },
+                        .clickable { selectedMission = mission },
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = if (mission.type == MissionType.PRINCIPAL) {
+                            Color(0xFFFFD700).copy(alpha = 0.1f) // Gold tint for principal
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        }
                     )
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(16.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                if (mission.type == MissionType.PRINCIPAL) {
+                                    Icon(
+                                        Icons.Default.Star,
+                                        contentDescription = "Principal Mission",
+                                        tint = Color(0xFFFFD700),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                                Text(
+                                    text = mission.name,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                             Text(
-                                text = "Mission ${index + 1}",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = secondaryMissions[index],
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 1
+                                text = mission.status,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Category badge
+                        mission.category?.let { category ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(
+                                        if (mission.type == MissionType.PRINCIPAL)
+                                            Color(0xFFFFD700).copy(alpha = 0.3f)
+                                        else
+                                            MaterialTheme.colorScheme.secondaryContainer
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = category,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (mission.type == MissionType.PRINCIPAL)
+                                        Color(0xFFB8860B)
+                                    else
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
                         Text(
-                            text = "Ongoing",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
+                            text = mission.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 2,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        mission.winConditionText?.let { winCondition ->
+                            Text(
+                                text = "Goal: $winCondition",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        mission.progressText?.let { progress ->
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Progress: $progress",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF4CAF50)
+                            )
+                        }
+
+                        // Show progress bar for principal missions
+                        mission.progressPercentage?.let { percentage ->
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LinearProgressIndicator(
+                                progress = { percentage / 100f },
+                                modifier = Modifier.fillMaxWidth(),
+                                color = Color(0xFFFFD700)
+                            )
+                        }
                     }
                 }
             }
 
-            if (secondaryMissions.isEmpty()) {
+            if (missions.isEmpty()) {
                 item {
                     Text(
-                        text = "No secondary missions yet. Your hero will discover them during adventures (1% chance per action).",
+                        text = "No active missions yet. Your hero will discover them during adventures.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -1417,18 +1495,124 @@ fun SecondaryMissionsTab(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Mission name
                     Text(
-                        text = mission,
+                        text = mission.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Category badge
+                    mission.category?.let { category ->
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(
+                                    if (mission.type == MissionType.PRINCIPAL)
+                                        Color(0xFFFFD700).copy(alpha = 0.3f)
+                                    else
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = category,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (mission.type == MissionType.PRINCIPAL)
+                                    Color(0xFFB8860B)
+                                else
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    // Description
+                    Text(
+                        text = mission.description,
                         style = MaterialTheme.typography.bodyMedium
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(
-                        text = "Win Condition: (Details will be shown here)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // Win Condition
+                    mission.winConditionText?.let { winCondition ->
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = if (mission.type == MissionType.PRINCIPAL) "Objective" else "Win Condition",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = winCondition,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    mission.progressText?.let { progress ->
+                        Text(
+                            text = "Progress: $progress",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF4CAF50),
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        mission.progressPercentage?.let { percentage ->
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LinearProgressIndicator(
+                                progress = { percentage / 100f },
+                                modifier = Modifier.fillMaxWidth(),
+                                color = Color(0xFFFFD700)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    // Rewards (only for secondary missions)
+                    if (mission.type == MissionType.SECONDARY && mission.baseExperience != null && mission.baseGold != null) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFFFD700).copy(alpha = 0.1f)
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = "Rewards",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "+${mission.baseExperience} XP",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = "+${mission.baseGold} Gold",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color(0xFFFFD700)
+                                )
+                                Text(
+                                    text = "20% chance of equipment, 2% chance of rare equipment",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

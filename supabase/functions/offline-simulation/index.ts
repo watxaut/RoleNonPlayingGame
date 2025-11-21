@@ -131,6 +131,12 @@ serve(async (req) => {
             gold: character.gold,
             current_hp: character.current_hp,
             max_hp: character.max_hp,
+            strength: character.strength,
+            intelligence: character.intelligence,
+            agility: character.agility,
+            luck: character.luck,
+            charisma: character.charisma,
+            vitality: character.vitality,
           },
           characterName: character.name,
           missionProgress: {
@@ -158,6 +164,10 @@ serve(async (req) => {
 
     // Update character state in database
     // Note: Supabase JS client automatically handles JSON serialization for JSONB columns
+    // Note: We do NOT update mission-related fields (active_principal_mission_id, etc.) because:
+    // 1. The simulator doesn't modify them
+    // 2. They should only be managed by the client app
+    // 3. Mission progress is tracked separately in principal_mission_progress table
     const { error: updateError } = await supabaseClient
       .from("characters")
       .update({
@@ -176,9 +186,6 @@ serve(async (req) => {
         inventory: simulationResult.updatedCharacter.inventory, // Arrays are auto-serialized to JSONB
         equipped_items: simulationResult.updatedCharacter.equipped_items,
         discovered_locations: simulationResult.updatedCharacter.discovered_locations,
-        active_principal_mission_id: simulationResult.updatedCharacter.active_principal_mission_id,
-        principal_mission_started_at: simulationResult.updatedCharacter.principal_mission_started_at,
-        principal_mission_completed_count: simulationResult.updatedCharacter.principal_mission_completed_count,
         last_active_at: now.toISOString(),
       })
       .eq("id", characterId);
@@ -228,6 +235,12 @@ serve(async (req) => {
         gold: simulationResult.updatedCharacter.gold,
         current_hp: simulationResult.updatedCharacter.current_hp,
         max_hp: simulationResult.updatedCharacter.max_hp,
+        strength: simulationResult.updatedCharacter.strength,
+        intelligence: simulationResult.updatedCharacter.intelligence,
+        agility: simulationResult.updatedCharacter.agility,
+        luck: simulationResult.updatedCharacter.luck,
+        charisma: simulationResult.updatedCharacter.charisma,
+        vitality: simulationResult.updatedCharacter.vitality,
       },
       characterName: character.name,
       missionProgress: {

@@ -106,37 +106,59 @@ class MissionProgressRepositoryImpl @Inject constructor(
         return try {
             logDebug("Completing step $stepId for mission $missionId")
 
-            // Fetch current progress
-            val currentProgress = supabaseClient
-                .from(TABLE_PRINCIPAL)
-                .select {
-                    filter {
-                        eq("character_id", characterId)
-                        eq("mission_id", missionId)
+            // Try to fetch current progress
+            val currentProgress = try {
+                supabaseClient
+                    .from(TABLE_PRINCIPAL)
+                    .select {
+                        filter {
+                            eq("character_id", characterId)
+                            eq("mission_id", missionId)
+                        }
                     }
-                }
-                .decodeSingle<PrincipalMissionProgressDto>()
-
-            // Add step to completed steps if not already present
-            val updatedSteps = currentProgress.completedStepIds.toMutableList()
-            if (!updatedSteps.contains(stepId)) {
-                updatedSteps.add(stepId)
+                    .decodeSingle<PrincipalMissionProgressDto>()
+            } catch (e: Exception) {
+                // No existing progress - create a new record with this step
+                logDebug("No existing progress found, creating new record")
+                null
             }
 
-            // Update with new step
-            supabaseClient
-                .from(TABLE_PRINCIPAL)
-                .update(
-                    {
-                        set("completed_step_ids", updatedSteps)
-                        set("last_progress_at", Instant.now().toString())
-                    }
-                ) {
-                    filter {
-                        eq("character_id", characterId)
-                        eq("mission_id", missionId)
-                    }
+            if (currentProgress == null) {
+                // Create new progress record with the step
+                val dto = PrincipalMissionProgressDto(
+                    characterId = characterId,
+                    missionId = missionId,
+                    status = "in_progress",
+                    startedAt = Instant.now().toString(),
+                    completedStepIds = listOf(stepId),
+                    lastProgressAt = Instant.now().toString()
+                )
+
+                supabaseClient
+                    .from(TABLE_PRINCIPAL)
+                    .insert(dto)
+            } else {
+                // Add step to completed steps if not already present
+                val updatedSteps = currentProgress.completedStepIds.toMutableList()
+                if (!updatedSteps.contains(stepId)) {
+                    updatedSteps.add(stepId)
                 }
+
+                // Update with new step
+                supabaseClient
+                    .from(TABLE_PRINCIPAL)
+                    .update(
+                        {
+                            set("completed_step_ids", updatedSteps)
+                            set("last_progress_at", Instant.now().toString())
+                        }
+                    ) {
+                        filter {
+                            eq("character_id", characterId)
+                            eq("mission_id", missionId)
+                        }
+                    }
+            }
 
             logDebug("Step completed successfully")
             Result.success(Unit)

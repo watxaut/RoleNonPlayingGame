@@ -56,9 +56,11 @@ data class Character(
 ) {
     /**
      * Calculate experience needed for next level
+     * Uses exponential curve: 100 * (level ^ 1.5)
+     * Matches the TypeScript implementation in offline simulation
      */
     fun experienceForNextLevel(): Long {
-        return level * 100L
+        return (100 * Math.pow(level.toDouble(), 1.5)).toLong()
     }
 
     /**

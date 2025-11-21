@@ -44,6 +44,8 @@ object NetworkModule {
                 // Without this, sessions are lost when app backgrounds/restarts
                 autoSaveToStorage = true
                 autoLoadFromStorage = true
+                // Explicitly enable session auto-refresh to keep user logged in
+                alwaysAutoRefresh = true
             }
             install(Postgrest)
             install(Realtime)

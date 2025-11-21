@@ -4,6 +4,7 @@ import com.watxaut.rolenonplayinggame.domain.model.Character
 import com.watxaut.rolenonplayinggame.domain.model.CharacterStats
 import com.watxaut.rolenonplayinggame.domain.model.JobClass
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
+import com.watxaut.rolenonplayinggame.domain.repository.MissionProgressRepository
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -17,12 +18,14 @@ import org.junit.Test
 class CreateCharacterUseCaseTest {
 
     private lateinit var mockRepository: CharacterRepository
+    private lateinit var mockMissionProgressRepository: MissionProgressRepository
     private lateinit var useCase: CreateCharacterUseCase
 
     @Before
     fun setup() {
         mockRepository = mockk()
-        useCase = CreateCharacterUseCase(mockRepository)
+        mockMissionProgressRepository = mockk(relaxed = true)
+        useCase = CreateCharacterUseCase(mockRepository, mockMissionProgressRepository)
     }
 
     @Test
@@ -113,6 +116,10 @@ class CreateCharacterUseCaseTest {
         val mockCharacter = mockk<Character>()
 
         coEvery {
+            mockRepository.getCharactersByUserId("user123")
+        } returns kotlinx.coroutines.flow.flowOf(emptyList())
+
+        coEvery {
             mockRepository.createCharacter(any())
         } returns Result.success(mockCharacter)
 
@@ -131,6 +138,10 @@ class CreateCharacterUseCaseTest {
     fun `invoke should fail for invalid name`() = runTest {
         val stats = CharacterStats(2, 2, 2, 1, 1, 2)
 
+        coEvery {
+            mockRepository.getCharactersByUserId("user123")
+        } returns kotlinx.coroutines.flow.flowOf(emptyList())
+
         val result = useCase(
             userId = "user123",
             name = "AB", // Too short
@@ -144,6 +155,10 @@ class CreateCharacterUseCaseTest {
     @Test
     fun `invoke should fail for invalid stats`() = runTest {
         val stats = CharacterStats(5, 5, 5, 5, 5, 5) // Total = 30, not 10
+
+        coEvery {
+            mockRepository.getCharactersByUserId("user123")
+        } returns kotlinx.coroutines.flow.flowOf(emptyList())
 
         val result = useCase(
             userId = "user123",
@@ -159,6 +174,10 @@ class CreateCharacterUseCaseTest {
     fun `invoke should handle repository failure`() = runTest {
         val stats = CharacterStats(2, 2, 2, 1, 1, 2)
         val error = RuntimeException("Database error")
+
+        coEvery {
+            mockRepository.getCharactersByUserId("user123")
+        } returns kotlinx.coroutines.flow.flowOf(emptyList())
 
         coEvery {
             mockRepository.createCharacter(any())

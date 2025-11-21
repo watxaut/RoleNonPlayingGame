@@ -140,17 +140,25 @@ export async function simulateOfflineProgress(
       const allSteps = [...new Set([...existingSteps, ...missionStepsDiscovered])];
 
       // Update or insert progress
-      await supabaseClient
+      const { error: upsertError } = await supabaseClient
         .from("principal_mission_progress")
         .upsert({
           character_id: char.id,
           mission_id: char.active_principal_mission_id,
+          status: 'in_progress',
           completed_step_ids: allSteps,
+          started_at: currentProgress?.started_at || new Date().toISOString(),
           last_progress_at: new Date().toISOString(),
           progress_percentage: Math.floor((allSteps.length / 10) * 100),
         });
+
+      if (upsertError) {
+        console.error("Failed to save principal mission progress:", upsertError);
+      } else {
+        console.log(`✅ Saved ${allSteps.length} mission steps for mission ${char.active_principal_mission_id}`);
+      }
     } catch (e) {
-      // Silently fail - mission progress is not critical
+      console.error("Exception while saving principal mission progress:", e);
     }
   }
 
@@ -285,7 +293,9 @@ function executeExplore(
     }
     // 30% chance for secondary mission discovery
     else if (Math.random() < 0.3) {
-      const missionId = `secondary_mission_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      // Pick a random mission ID from the SecondaryMissionsRepository (sm_001 to sm_100)
+      const missionNumber = Math.floor(Math.random() * 100) + 1;
+      const missionId = `sm_${String(missionNumber).padStart(3, '0')}`;
       secondaryMissionsDiscovered.push(missionId);
       summary.majorEvents.push(`Discovered a new secondary mission!`);
     }

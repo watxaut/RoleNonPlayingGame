@@ -150,5 +150,24 @@ data class CharacterStateDto(
     val currentHp: Int,
 
     @SerialName("max_hp")
-    val maxHp: Int
+    val maxHp: Int,
+
+    // Character stats (updated during level-ups)
+    @SerialName("strength")
+    val strength: Int,
+
+    @SerialName("intelligence")
+    val intelligence: Int,
+
+    @SerialName("agility")
+    val agility: Int,
+
+    @SerialName("luck")
+    val luck: Int,
+
+    @SerialName("charisma")
+    val charisma: Int,
+
+    @SerialName("vitality")
+    val vitality: Int
 )

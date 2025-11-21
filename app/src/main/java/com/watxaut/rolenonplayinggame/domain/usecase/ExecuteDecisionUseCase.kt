@@ -121,11 +121,29 @@ class ExecuteDecisionUseCase @Inject constructor(
 
         // Check principal mission progress during exploration
         if (decision is Decision.Explore) {
+            // Get current principal mission progress
+            val activeMissionProgress = character.activePrincipalMissionId?.let { missionId ->
+                println("📍 Character has active mission: $missionId, fetching progress...")
+                val result = missionProgressRepository.getActivePrincipalMission(character.id)
+                if (result.isSuccess) {
+                    val progress = result.getOrNull()
+                    if (progress != null) {
+                        println("   ✅ Found progress: ${progress.completedSteps.size} steps completed")
+                    } else {
+                        println("   ⚠️ No progress record found in database")
+                    }
+                    progress
+                } else {
+                    println("   ❌ Failed to fetch progress: ${result.exceptionOrNull()?.message}")
+                    null
+                }
+            }
+
             // Check for mission step discovery (2% chance)
             val discoveredStep = missionDiscoveryHelper.checkPrincipalMissionStepDiscovery(
                 character = character,
                 currentLocation = character.currentLocation,
-                activeMissionProgress = null // TODO: Get from DB
+                activeMissionProgress = activeMissionProgress
             )
 
             if (discoveredStep != null) {
@@ -164,7 +182,7 @@ class ExecuteDecisionUseCase @Inject constructor(
             val bossEncounter = missionDiscoveryHelper.checkBossEncounter(
                 character = character,
                 currentLocation = character.currentLocation,
-                activeMissionProgress = null // TODO: Get from DB
+                activeMissionProgress = activeMissionProgress
             )
 
             if (bossEncounter != null) {

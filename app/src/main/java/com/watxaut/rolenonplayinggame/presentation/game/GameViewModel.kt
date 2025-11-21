@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.watxaut.rolenonplayinggame.core.ai.BasicDecisionEngine
 import com.watxaut.rolenonplayinggame.core.ai.DecisionContext
 import com.watxaut.rolenonplayinggame.data.repository.PrincipalMissionsRepository
+import com.watxaut.rolenonplayinggame.data.repository.SecondaryMissionsRepository
 import com.watxaut.rolenonplayinggame.domain.model.Activity
 import com.watxaut.rolenonplayinggame.domain.model.Character
 import com.watxaut.rolenonplayinggame.domain.model.LoreDiscovery
@@ -79,11 +80,13 @@ class GameViewModel @Inject constructor(
                             if (decisionLoopJob == null || decisionLoopJob?.isActive == false) {
                                 startDecisionLoop(character)
                             }
-                            // Load mission progress on first load
-                            loadMissionProgress(character)
-                            // Load lore discoveries
-                            loadLoreDiscoveries(character.id)
                         }
+
+                        // Reload mission progress whenever character data changes
+                        // This ensures offline simulation updates are reflected
+                        loadMissionProgress(character)
+                        loadLoreDiscoveries(character.id)
+                        loadSecondaryMissions(character.id)
                     } else {
                         _uiState.update {
                             it.copy(
@@ -149,6 +152,13 @@ class GameViewModel @Inject constructor(
                         // Check for level up and update local character variable
                         if (character.shouldLevelUp()) {
                             character = levelUpCharacter(character)
+                        }
+
+                        // Reload mission progress after EXPLORATION (steps can be discovered) or QUEST activities
+                        if (outcome.activity.type == com.watxaut.rolenonplayinggame.domain.model.ActivityType.EXPLORATION ||
+                            outcome.activity.type == com.watxaut.rolenonplayinggame.domain.model.ActivityType.QUEST) {
+                            loadMissionProgress(character)
+                            loadSecondaryMissions(character.id)
                         }
                     }.onFailure { error ->
                         _uiState.update {
@@ -353,6 +363,78 @@ class GameViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Load all missions (both principal and secondary) for the character
+     */
+    private fun loadSecondaryMissions(characterId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val allMissions = mutableListOf<MissionDisplay>()
+
+            // Load principal mission if active
+            val character = _uiState.value.character
+            character?.activePrincipalMissionId?.let { missionId ->
+                val mission = PrincipalMissionsRepository.getMissionById(missionId)
+                val progressResult = missionProgressRepository.getActivePrincipalMission(characterId)
+
+                if (mission != null) {
+                    progressResult.onSuccess { progress ->
+                        val stepsComplete = progress?.completedSteps?.size ?: 0
+                        val totalSteps = mission.steps.size
+                        val progressPercentage = ((stepsComplete.toFloat() / totalSteps) * 100).toInt()
+
+                        allMissions.add(
+                            MissionDisplay(
+                                missionId = mission.id,
+                                name = mission.name,
+                                description = mission.description,
+                                type = MissionType.PRINCIPAL,
+                                status = if (progress?.bossDefeated == true) "Completed" else "Ongoing",
+                                progressText = "$stepsComplete / $totalSteps steps completed",
+                                winConditionText = "Defeat ${mission.bossBattle.bossName}",
+                                category = "Principal Mission",
+                                progressPercentage = progressPercentage
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Load secondary missions
+            val result = missionProgressRepository.getActiveSecondaryMissions(characterId)
+            result.onSuccess { missionProgressList ->
+                android.util.Log.d("GameViewModel", "Loaded ${missionProgressList.size} secondary mission progress entries")
+                // Convert SecondaryMissionProgress to display objects
+                val secondaryDisplayList = missionProgressList.mapNotNull { progress ->
+                    android.util.Log.d("GameViewModel", "Processing mission: ${progress.missionId}")
+                    val mission = SecondaryMissionsRepository.getMissionById(progress.missionId)
+                    if (mission == null) {
+                        android.util.Log.w("GameViewModel", "Mission not found in repository: ${progress.missionId}")
+                    }
+                    mission?.let {
+                        MissionDisplay(
+                            missionId = it.id,
+                            name = it.name,
+                            description = it.description,
+                            type = MissionType.SECONDARY,
+                            status = "Ongoing",
+                            progressText = progress.currentProgress.takeIf { text -> text.isNotEmpty() },
+                            winConditionText = it.winCondition.getDisplayText(),
+                            category = it.category.name.replace("_", " ").lowercase()
+                                .replaceFirstChar { char -> char.uppercase() },
+                            baseExperience = it.baseExperience,
+                            baseGold = it.baseGold
+                        )
+                    }
+                }
+                allMissions.addAll(secondaryDisplayList)
+                android.util.Log.d("GameViewModel", "Created ${allMissions.size} total mission display objects")
+                _uiState.update { it.copy(missions = allMissions) }
+            }.onFailure { error ->
+                android.util.Log.e("GameViewModel", "Failed to load missions", error)
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         // Cancel all running jobs when ViewModel is cleared
@@ -371,8 +453,30 @@ data class GameUiState(
     val currentAction: String = "Waiting for character...",
     val principalMissionProgress: String? = null,
     val discoveredLore: List<LoreDiscovery> = emptyList(),
-    val secondaryMissions: List<String> = emptyList(),
+    val missions: List<MissionDisplay> = emptyList(), // Combined principal + secondary missions
     val isLoading: Boolean = true,
     val error: String? = null,
     val showLevelUpAnimation: Boolean = false
 )
+
+/**
+ * Display model for missions in the UI (both principal and secondary)
+ */
+data class MissionDisplay(
+    val missionId: String,
+    val name: String,
+    val description: String,
+    val type: MissionType,
+    val status: String, // "Ongoing", "Completed", etc.
+    val progressText: String? = null,
+    val winConditionText: String? = null,
+    val category: String? = null,
+    val baseExperience: Long? = null,
+    val baseGold: Int? = null,
+    val progressPercentage: Int? = null
+)
+
+enum class MissionType {
+    PRINCIPAL,
+    SECONDARY
+}
