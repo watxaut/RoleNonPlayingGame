@@ -38,7 +38,8 @@ class ExecuteDecisionUseCase @Inject constructor(
     private val combatSystem: CombatSystem,
     private val messageProvider: MessageProvider,
     private val missionDiscoveryHelper: MissionDiscoveryHelper,
-    private val missionProgressRepository: MissionProgressRepository
+    private val missionProgressRepository: MissionProgressRepository,
+    private val socialRepository: com.watxaut.rolenonplayinggame.domain.repository.SocialRepository
 ) {
 
     /**
@@ -62,6 +63,7 @@ class ExecuteDecisionUseCase @Inject constructor(
                 is Decision.AcceptQuest -> executeAcceptQuest(character, decision)
                 is Decision.ContinueQuest -> executeContinueQuest(character, decision)
                 is Decision.Shop -> executeShop(character, decision)
+                is Decision.Encounter -> executeEncounter(character, decision)
                 is Decision.Idle -> executeIdle(character, decision)
             }
 
@@ -529,8 +531,70 @@ class ExecuteDecisionUseCase @Inject constructor(
     }
 
     /**
-     * Execute idle decision (do nothing).
+     * Execute social encounter decision.
+     * Coordinates encounter with another character via Edge Function.
      */
+    private suspend fun executeEncounter(character: Character, decision: Decision.Encounter): DecisionOutcome {
+        // Coordinate encounter via Edge Function
+        val encounterResult = socialRepository.coordinateEncounter(
+            character1Id = character.id,
+            character2Id = decision.otherCharacterId,
+            location = character.currentLocation
+        )
+
+        return encounterResult.fold(
+            onSuccess = { encounter ->
+                val outcome = encounter.outcome!!
+                val description = outcome.description
+
+                // Apply effects based on encounter type
+                var updatedCharacter = character
+                if (outcome.goldChange != null && outcome.goldChange != 0L) {
+                    updatedCharacter = updatedCharacter.copy(
+                        gold = maxOf(0, updatedCharacter.gold + outcome.goldChange)
+                    )
+                }
+                if (outcome.damageDealt != null && outcome.damageDealt > 0) {
+                    updatedCharacter = updatedCharacter.copy(
+                        currentHp = maxOf(0, updatedCharacter.currentHp - outcome.damageDealt)
+                    )
+                }
+
+                val activity = Activity(
+                    characterId = character.id,
+                    timestamp = Instant.now(),
+                    type = ActivityType.SOCIAL,
+                    description = description,
+                    rewards = ActivityRewards(
+                        gold = outcome.goldChange?.toInt() ?: 0
+                    ),
+                    metadata = mapOf(
+                        "encounter_id" to encounter.id,
+                        "encounter_type" to encounter.encounterType.name,
+                        "other_character" to decision.otherCharacterName
+                    ),
+                    isMajorEvent = encounter.encounterType in listOf(
+                        com.watxaut.rolenonplayinggame.domain.model.EncounterType.COMBAT,
+                        com.watxaut.rolenonplayinggame.domain.model.EncounterType.PARTY
+                    )
+                )
+
+                DecisionOutcome(updatedCharacter, activity)
+            },
+            onFailure = { error ->
+                // Encounter failed - log it as idle
+                val activity = Activity(
+                    characterId = character.id,
+                    timestamp = Instant.now(),
+                    type = ActivityType.SOCIAL,
+                    description = "Approached ${decision.otherCharacterName} but they had already left the area.",
+                    isMajorEvent = false
+                )
+                DecisionOutcome(character, activity)
+            }
+        )
+    }
+
     private fun executeIdle(character: Character, decision: Decision.Idle): DecisionOutcome {
         val activity = Activity(
             characterId = character.id,

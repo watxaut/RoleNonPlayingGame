@@ -41,6 +41,7 @@ class GameViewModel @Inject constructor(
     private val characterRepository: CharacterRepository,
     private val activityRepository: ActivityRepository,
     private val missionProgressRepository: MissionProgressRepository,
+    private val socialRepository: com.watxaut.rolenonplayinggame.domain.repository.SocialRepository,
     private val executeDecisionUseCase: ExecuteDecisionUseCase,
     private val decisionEngine: BasicDecisionEngine
 ) : ViewModel() {
@@ -141,12 +142,18 @@ class GameViewModel @Inject constructor(
 
                     result.onSuccess { outcome ->
                         // Update character state
+                        val previousLocation = character.currentLocation
                         character = outcome.updatedCharacter
                         _uiState.update {
                             it.copy(
                                 character = character,
                                 currentAction = outcome.activity.description
                             )
+                        }
+
+                        // Update active location if character moved
+                        if (character.currentLocation != previousLocation) {
+                            updateActiveLocation(character)
                         }
 
                         // Check for level up and update local character variable
@@ -187,7 +194,7 @@ class GameViewModel @Inject constructor(
     /**
      * Build decision context for the AI.
      */
-    private fun buildDecisionContext(character: Character): DecisionContext {
+    private suspend fun buildDecisionContext(character: Character): DecisionContext {
         // For Week 3, use simple context
         // Future weeks will expand this with real location data, quests, etc.
 
@@ -202,6 +209,9 @@ class GameViewModel @Inject constructor(
 
         val hasInn = character.currentLocation == "heartlands_havenmoor" // Only Havenmoor (the main town) has an inn
 
+        // Query for nearby characters (social feature)
+        val nearbyCharacters = fetchNearbyCharacters(character)
+
         return DecisionContext(
             currentLocation = character.currentLocation,
             currentHp = character.currentHp,
@@ -210,8 +220,47 @@ class GameViewModel @Inject constructor(
             level = character.level,
             nearbyLocations = nearbyLocations,
             hasInnAccess = hasInn,
-            hasActiveQuest = false // TODO: Implement quest system in future weeks
+            hasActiveQuest = false, // TODO: Implement quest system in future weeks
+            nearbyCharacters = nearbyCharacters
         )
+    }
+
+    /**
+     * Fetch nearby characters for social encounters.
+     * Returns empty list on error to not block AI decisions.
+     */
+    private suspend fun fetchNearbyCharacters(character: Character): List<com.watxaut.rolenonplayinggame.core.ai.NearbyCharacterInfo> {
+        return try {
+            val result = socialRepository.findNearbyCharacters(
+                characterId = character.id,
+                location = character.currentLocation,
+                maxResults = 5
+            )
+            result.getOrNull()?.map {
+                com.watxaut.rolenonplayinggame.core.ai.NearbyCharacterInfo(
+                    id = it.id,
+                    name = it.name,
+                    level = it.level,
+                    personalitySocial = it.personalitySocial
+                )
+            } ?: emptyList()
+        } catch (e: Exception) {
+            emptyList() // Don't fail AI decision cycle due to network issues
+        }
+    }
+
+    /**
+     * Update active location for encounter matching.
+     * Called whenever character moves to a new location.
+     */
+    private fun updateActiveLocation(character: Character) {
+        viewModelScope.launch(Dispatchers.IO) {
+            socialRepository.updateActiveLocation(
+                characterId = character.id,
+                location = character.currentLocation,
+                isAvailable = true
+            )
+        }
     }
 
     /**
@@ -269,6 +318,13 @@ class GameViewModel @Inject constructor(
         decisionLoopJob?.cancel()
         characterObserverJob?.cancel()
         activityObserverJob?.cancel()
+
+        // Remove from active locations (no longer available for encounters)
+        characterId?.let { id ->
+            viewModelScope.launch(Dispatchers.IO) {
+                socialRepository.removeActiveLocation(id)
+            }
+        }
 
         // Update UI state
         _uiState.update { it.copy(currentAction = "AI Paused") }
@@ -441,6 +497,13 @@ class GameViewModel @Inject constructor(
         decisionLoopJob?.cancel()
         characterObserverJob?.cancel()
         activityObserverJob?.cancel()
+
+        // Remove from active locations on cleanup
+        characterId?.let { id ->
+            viewModelScope.launch(Dispatchers.IO) {
+                socialRepository.removeActiveLocation(id)
+            }
+        }
     }
 }
 
