@@ -22,6 +22,8 @@ import com.watxaut.rolenonplayinggame.presentation.auth.LoginScreen
 import com.watxaut.rolenonplayinggame.presentation.character.CharacterCreationScreen
 import com.watxaut.rolenonplayinggame.presentation.game.GameScreen
 import com.watxaut.rolenonplayinggame.presentation.main.MainScreen
+import com.watxaut.rolenonplayinggame.presentation.social.EncounterHistoryScreen
+import com.watxaut.rolenonplayinggame.presentation.social.PublicProfileScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -126,6 +128,48 @@ fun AppNavigation(
                     characterId = characterId,
                     onNavigateBack = {
                         navController.navigateUp()
+                    },
+                    onNavigateToEncounterHistory = { charId ->
+                        navController.navigate(Screen.EncounterHistory.createRoute(charId))
+                    }
+                )
+            }
+
+            // Public Profile screen
+            composable(
+                route = Screen.PublicProfile.route,
+                arguments = listOf(
+                    navArgument("characterId") {
+                        type = NavType.StringType
+                    }
+                )
+            ) { backStackEntry ->
+                val characterId = backStackEntry.arguments?.getString("characterId") ?: return@composable
+                PublicProfileScreen(
+                    characterId = characterId,
+                    onNavigateBack = {
+                        navController.navigateUp()
+                    }
+                )
+            }
+
+            // Encounter History screen
+            composable(
+                route = Screen.EncounterHistory.route,
+                arguments = listOf(
+                    navArgument("characterId") {
+                        type = NavType.StringType
+                    }
+                )
+            ) { backStackEntry ->
+                val characterId = backStackEntry.arguments?.getString("characterId") ?: return@composable
+                EncounterHistoryScreen(
+                    characterId = characterId,
+                    onNavigateBack = {
+                        navController.navigateUp()
+                    },
+                    onNavigateToProfile = { profileCharacterId ->
+                        navController.navigate(Screen.PublicProfile.createRoute(profileCharacterId))
                     }
                 )
             }
