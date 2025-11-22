@@ -32,7 +32,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -47,6 +49,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.watxaut.rolenonplayinggame.domain.model.JobClass
+import com.watxaut.rolenonplayinggame.domain.model.PersonalityQuestion
+import com.watxaut.rolenonplayinggame.domain.model.QuestionType
 import com.watxaut.rolenonplayinggame.domain.model.StatType
 
 /**
@@ -98,7 +102,16 @@ fun CharacterCreationScreen(
                 )
             }
 
-            // Step 2: Job Class Selection
+            // Step 2: Personality Questionnaire
+            item {
+                PersonalityQuestionnaireSection(
+                    questions = uiState.personalityQuestions,
+                    answers = uiState.questionnaireAnswers,
+                    onAnswerQuestion = viewModel::answerQuestion
+                )
+            }
+
+            // Step 3: Job Class Selection
             item {
                 JobClassSelectionSection(
                     selectedJobClass = uiState.selectedJobClass,
@@ -106,7 +119,7 @@ fun CharacterCreationScreen(
                 )
             }
 
-            // Step 3: Stat Allocation
+            // Step 4: Stat Allocation
             item {
                 StatAllocationSection(
                     stats = uiState.stats,
@@ -190,13 +203,238 @@ private fun NameInputSection(
 }
 
 @Composable
+private fun PersonalityQuestionnaireSection(
+    questions: List<PersonalityQuestion>,
+    answers: Map<String, com.watxaut.rolenonplayinggame.domain.model.QuestionAnswer>,
+    onAnswerQuestion: (String, Int?, Int?) -> Unit
+) {
+    Column {
+        Text(
+            text = "2. Answer a Few Questions",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            text = "Help shape your character's personality (${answers.size}/${questions.size} answered)",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        questions.forEachIndexed { index, question ->
+            QuestionCard(
+                questionNumber = index + 1,
+                question = question,
+                answer = answers[question.id],
+                onAnswer = onAnswerQuestion
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun QuestionCard(
+    questionNumber: Int,
+    question: PersonalityQuestion,
+    answer: com.watxaut.rolenonplayinggame.domain.model.QuestionAnswer?,
+    onAnswer: (String, Int?, Int?) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (answer != null) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            }
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Question $questionNumber",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                if (answer != null) {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = "Answered",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = question.text,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            when (question.type) {
+                QuestionType.YES_NO -> {
+                    YesNoQuestion(
+                        question = question,
+                        selectedIndex = answer?.selectedOptionIndex,
+                        onSelect = { index -> onAnswer(question.id, index, null) }
+                    )
+                }
+                QuestionType.SCALE -> {
+                    ScaleQuestion(
+                        selectedValue = answer?.scaleValue,
+                        onSelect = { value -> onAnswer(question.id, null, value) }
+                    )
+                }
+                QuestionType.MULTIPLE_CHOICE -> {
+                    MultipleChoiceQuestion(
+                        question = question,
+                        selectedIndex = answer?.selectedOptionIndex,
+                        onSelect = { index -> onAnswer(question.id, index, null) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun YesNoQuestion(
+    question: PersonalityQuestion,
+    selectedIndex: Int?,
+    onSelect: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        question.options.forEachIndexed { index, option ->
+            OutlinedButton(
+                onClick = { onSelect(index) },
+                modifier = Modifier.weight(1f),
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (selectedIndex == index) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    }
+                )
+            ) {
+                Text(option.text)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScaleQuestion(
+    selectedValue: Int?,
+    onSelect: (Int) -> Unit
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Strongly Disagree",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Strongly Agree",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Slider(
+            value = (selectedValue ?: 2).toFloat(),
+            onValueChange = { onSelect(it.toInt()) },
+            valueRange = 0f..5f,
+            steps = 4,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            (0..5).forEach { value ->
+                Text(
+                    text = value.toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (selectedValue == value) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    fontWeight = if (selectedValue == value) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MultipleChoiceQuestion(
+    question: PersonalityQuestion,
+    selectedIndex: Int?,
+    onSelect: (Int) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        question.options.forEachIndexed { index, option ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSelect(index) }
+                    .background(
+                        if (selectedIndex == index) {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        },
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = selectedIndex == index,
+                    onClick = { onSelect(index) }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = option.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun JobClassSelectionSection(
     selectedJobClass: JobClass?,
     onJobClassSelect: (JobClass) -> Unit
 ) {
     Column {
         Text(
-            text = "2. Select Your Job Class",
+            text = "3. Select Your Job Class",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
@@ -312,7 +550,7 @@ private fun StatAllocationSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "3. Allocate Stats",
+                text = "4. Allocate Stats",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )

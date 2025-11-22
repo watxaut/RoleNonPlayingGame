@@ -125,17 +125,38 @@ data class Character(
     companion object {
         /**
          * Create a new character with initial stat allocation
+         *
+         * @param userId The user ID who owns this character
+         * @param name The character's name
+         * @param jobClass The character's job class
+         * @param initialStats The initial stat allocation
+         * @param questionnaireAnswers Optional questionnaire answers to influence personality
+         * @param questions Optional list of questions that were answered
+         * @return A new Character instance
          */
         fun create(
             userId: String,
             name: String,
             jobClass: JobClass,
-            initialStats: Map<StatType, Int>
+            initialStats: Map<StatType, Int>,
+            questionnaireAnswers: List<QuestionAnswer>? = null,
+            questions: List<PersonalityQuestion>? = null
         ): Character {
             val vitality = initialStats[StatType.VITALITY] ?: 1
             val maxHp = 50 + (vitality * 10)
 
-            val personalityTraits = PersonalityTraits.forJobClass(jobClass)
+            // Generate personality traits
+            val personalityTraits = if (questionnaireAnswers != null && questions != null) {
+                // Use questionnaire answers if available
+                PersonalityTraits.fromQuestionnaire(
+                    answers = questionnaireAnswers,
+                    questions = questions,
+                    jobClass = jobClass
+                )
+            } else {
+                // Fall back to job class-based generation
+                PersonalityTraits.forJobClass(jobClass)
+            }
 
             return Character(
                 userId = userId,
