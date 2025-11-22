@@ -11,6 +11,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -175,7 +179,7 @@ class SocialRepositoryImpl @Inject constructor(
             data class EncounterResponse(
                 val success: Boolean,
                 val encounter: EncounterData,
-                val outcome: Map<String, Any?>,
+                val outcome: JsonObject,
                 val interaction_type: String
             )
 
@@ -185,10 +189,12 @@ class SocialRepositoryImpl @Inject constructor(
                 location = location
             )
 
-            val encounterResponse = supabase.functions.invoke<EncounterResponse>(
+            val response = supabase.functions.invoke(
                 function = FUNCTION_COORDINATE_ENCOUNTER,
                 body = request
             )
+
+            val encounterResponse = json.decodeFromString<EncounterResponse>(response.data?.decodeToString() ?: "{}")
 
             val encounter = Encounter(
                 id = encounterResponse.encounter.id,
@@ -198,8 +204,8 @@ class SocialRepositoryImpl @Inject constructor(
                 encounterType = EncounterType.valueOf(encounterResponse.encounter.encounter_type.uppercase()),
                 status = EncounterStatus.valueOf(encounterResponse.encounter.status.uppercase()),
                 outcome = EncounterOutcome(
-                    success = encounterResponse.outcome["success"] as? Boolean ?: false,
-                    description = encounterResponse.outcome["description"] as? String ?: "Unknown outcome"
+                    success = encounterResponse.outcome["success"]?.jsonPrimitive?.booleanOrNull ?: false,
+                    description = encounterResponse.outcome["description"]?.jsonPrimitive?.contentOrNull ?: "Unknown outcome"
                 ),
                 createdAt = Instant.parse(encounterResponse.encounter.created_at),
                 completedAt = encounterResponse.encounter.completed_at?.let { Instant.parse(it) }
@@ -228,14 +234,17 @@ class SocialRepositoryImpl @Inject constructor(
                 val character2_id: String,
                 val location: String,
                 val encounter_type: String,
-                val outcome: Map<String, Any?>?,
+                val outcome: JsonObject?,
                 val created_at: String
             )
 
             val encountersData = supabase.from(TABLE_ENCOUNTERS)
                 .select() {
                     filter {
-                        or("character1_id=eq.$characterId,character2_id=eq.$characterId", filterByBrackets = false)
+                        or {
+                            eq("character1_id", characterId)
+                            eq("character2_id", characterId)
+                        }
                         eq("status", "completed")
                     }
                     order("created_at", order = Order.DESCENDING)
@@ -254,8 +263,8 @@ class SocialRepositoryImpl @Inject constructor(
                     encounterType = EncounterType.valueOf(data.encounter_type.uppercase()),
                     location = data.location,
                     outcome = EncounterOutcome(
-                        success = data.outcome?.get("success") as? Boolean ?: false,
-                        description = data.outcome?.get("description") as? String ?: "No description"
+                        success = data.outcome?.get("success")?.jsonPrimitive?.booleanOrNull ?: false,
+                        description = data.outcome?.get("description")?.jsonPrimitive?.contentOrNull ?: "No description"
                     ),
                     timestamp = Instant.parse(data.created_at)
                 )
