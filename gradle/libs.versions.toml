@@ -39,6 +39,9 @@ mockk = "1.13.13"
 coroutinesTest = "1.9.0"
 turbine = "1.2.0"
 
+# libGDX
+gdx = "1.12.1"
+
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -101,6 +104,15 @@ androidx-security-crypto = { group = "androidx.security", name = "security-crypt
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 mockk-android = { group = "io.mockk", name = "mockk-android", version.ref = "mockk" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+
+# libGDX
+libgdx-core = { group = "com.badlogicgames.gdx", name = "gdx", version.ref = "gdx" }
+libgdx-backend-android = { group = "com.badlogicgames.gdx", name = "gdx-backend-android", version.ref = "gdx" }
+libgdx-platform-natives = { group = "com.badlogicgames.gdx", name = "gdx-platform", version.ref = "gdx", classifier = "natives-desktop" }
+libgdx-platform-natives-armeabi-v7a = { group = "com.badlogicgames.gdx", name = "gdx-platform", version.ref = "gdx", classifier = "natives-armeabi-v7a" }
+libgdx-platform-natives-arm64-v8a = { group = "com.badlogicgames.gdx", name = "gdx-platform", version.ref = "gdx", classifier = "natives-arm64-v8a" }
+libgdx-platform-natives-x86 = { group = "com.badlogicgames.gdx", name = "gdx-platform", version.ref = "gdx", classifier = "natives-x86" }
+libgdx-platform-natives-x86-64 = { group = "com.badlogicgames.gdx", name = "gdx-platform", version.ref = "gdx", classifier = "natives-x86_64" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

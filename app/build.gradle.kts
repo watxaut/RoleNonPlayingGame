@@ -127,6 +127,14 @@ dependencies {
     // Security
     implementation(libs.androidx.security.crypto)
 
+    // libGDX for tile map rendering
+    implementation(libs.libgdx.core)
+    implementation(libs.libgdx.backend.android)
+    implementation(libs.libgdx.platform.natives.armeabi.v7a)
+    implementation(libs.libgdx.platform.natives.arm64.v8a)
+    implementation(libs.libgdx.platform.natives.x86)
+    implementation(libs.libgdx.platform.natives.x86.64)
+
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)
