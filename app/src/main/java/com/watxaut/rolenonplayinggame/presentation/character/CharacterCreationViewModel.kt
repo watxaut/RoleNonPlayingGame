@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.watxaut.rolenonplayinggame.domain.model.CharacterStats
 import com.watxaut.rolenonplayinggame.domain.model.JobClass
+import com.watxaut.rolenonplayinggame.domain.model.PersonalityQuestion
+import com.watxaut.rolenonplayinggame.domain.model.PersonalityQuestionnaire
+import com.watxaut.rolenonplayinggame.domain.model.QuestionAnswer
 import com.watxaut.rolenonplayinggame.domain.model.StatType
 import com.watxaut.rolenonplayinggame.domain.repository.AuthRepository
 import com.watxaut.rolenonplayinggame.domain.usecase.CreateCharacterUseCase
@@ -27,7 +30,11 @@ class CharacterCreationViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(CharacterCreationUiState())
+    private val _uiState = MutableStateFlow(
+        CharacterCreationUiState(
+            personalityQuestions = PersonalityQuestionnaire.getRandomQuestions()
+        )
+    )
     val uiState: StateFlow<CharacterCreationUiState> = _uiState.asStateFlow()
 
     /**
@@ -195,12 +202,14 @@ class CharacterCreationViewModel @Inject constructor(
                 return@launch
             }
 
-            // Create character with authenticated user ID
+            // Create character with authenticated user ID and questionnaire answers
             val result = createCharacterUseCase(
                 userId = userId,
                 name = _uiState.value.name,
                 jobClass = jobClass,
-                stats = _uiState.value.stats
+                stats = _uiState.value.stats,
+                questionnaireAnswers = _uiState.value.questionnaireAnswers.values.toList(),
+                questions = _uiState.value.personalityQuestions
             )
 
             withContext(Dispatchers.Main) {
@@ -230,6 +239,19 @@ class CharacterCreationViewModel @Inject constructor(
     fun dismissJobClassInfo() {
         _uiState.update { it.copy(showJobClassInfo = false) }
     }
+
+    /**
+     * Answer a personality question
+     */
+    fun answerQuestion(questionId: String, selectedOptionIndex: Int?, scaleValue: Int?) {
+        val currentAnswers = _uiState.value.questionnaireAnswers.toMutableMap()
+        currentAnswers[questionId] = QuestionAnswer(
+            questionId = questionId,
+            selectedOptionIndex = selectedOptionIndex,
+            scaleValue = scaleValue
+        )
+        _uiState.update { it.copy(questionnaireAnswers = currentAnswers) }
+    }
 }
 
 /**
@@ -240,6 +262,10 @@ data class CharacterCreationUiState(
     val selectedJobClass: JobClass? = null,
     val stats: CharacterStats = CharacterStats.default(),
     val showJobClassInfo: Boolean = false,
+
+    // Personality questionnaire
+    val personalityQuestions: List<PersonalityQuestion> = emptyList(),
+    val questionnaireAnswers: Map<String, QuestionAnswer> = emptyMap(),
 
     // Validation errors
     val nameError: String? = null,
@@ -259,12 +285,22 @@ data class CharacterCreationUiState(
     }
 
     /**
+     * Check if all personality questions have been answered
+     */
+    fun areQuestionsAnswered(): Boolean {
+        return personalityQuestions.all { question ->
+            questionnaireAnswers.containsKey(question.id)
+        }
+    }
+
+    /**
      * Check if all inputs are valid and ready to create character
      */
     fun isValid(): Boolean {
         return name.isNotBlank() &&
                 selectedJobClass != null &&
                 getRemainingPoints() == 0 &&
+                areQuestionsAnswered() &&
                 nameError == null &&
                 statsError == null
     }

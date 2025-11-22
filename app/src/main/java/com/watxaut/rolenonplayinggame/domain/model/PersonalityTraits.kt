@@ -98,5 +98,100 @@ data class PersonalityTraits(
                 else -> base
             }
         }
+
+        /**
+         * Generate personality traits from questionnaire answers
+         * Combines questionnaire effects with random base values and job class influence
+         *
+         * @param answers The player's answers to personality questions
+         * @param questions The questions that were answered
+         * @param jobClass The character's job class
+         * @param random Random number generator for base values
+         * @return PersonalityTraits influenced by answers, job class, and randomness
+         */
+        fun fromQuestionnaire(
+            answers: List<QuestionAnswer>,
+            questions: List<PersonalityQuestion>,
+            jobClass: JobClass,
+            random: Random = Random.Default
+        ): PersonalityTraits {
+            // Start with random base values (30% influence)
+            val baseRandom = random()
+            val randomWeight = 0.3f
+
+            // Calculate effects from questionnaire answers (40% influence)
+            var totalEffects = PersonalityEffects()
+            answers.forEach { answer ->
+                val question = questions.find { it.id == answer.questionId }
+                if (question != null) {
+                    val effect = when (question.type) {
+                        QuestionType.SCALE -> {
+                            PersonalityQuestionnaire.getScaleEffects(question.id, answer.scaleValue ?: 0)
+                        }
+                        QuestionType.YES_NO, QuestionType.MULTIPLE_CHOICE -> {
+                            val optionIndex = answer.selectedOptionIndex ?: 0
+                            if (optionIndex < question.options.size) {
+                                question.options[optionIndex].effects
+                            } else {
+                                PersonalityEffects()
+                            }
+                        }
+                    }
+                    totalEffects += effect
+                }
+            }
+
+            val questionnaireWeight = 0.4f
+
+            // Calculate job class influence (30% influence)
+            val jobClassBase = forJobClass(jobClass, random)
+            val jobClassWeight = 0.3f
+
+            // Combine all influences
+            val courage = (
+                baseRandom.courage * randomWeight +
+                (0.5f + totalEffects.courage).coerceIn(0f, 1f) * questionnaireWeight +
+                jobClassBase.courage * jobClassWeight
+            ).coerceIn(0f, 1f)
+
+            val greed = (
+                baseRandom.greed * randomWeight +
+                (0.5f + totalEffects.greed).coerceIn(0f, 1f) * questionnaireWeight +
+                jobClassBase.greed * jobClassWeight
+            ).coerceIn(0f, 1f)
+
+            val curiosity = (
+                baseRandom.curiosity * randomWeight +
+                (0.5f + totalEffects.curiosity).coerceIn(0f, 1f) * questionnaireWeight +
+                jobClassBase.curiosity * jobClassWeight
+            ).coerceIn(0f, 1f)
+
+            val aggression = (
+                baseRandom.aggression * randomWeight +
+                (0.5f + totalEffects.aggression).coerceIn(0f, 1f) * questionnaireWeight +
+                jobClassBase.aggression * jobClassWeight
+            ).coerceIn(0f, 1f)
+
+            val social = (
+                baseRandom.social * randomWeight +
+                (0.5f + totalEffects.social).coerceIn(0f, 1f) * questionnaireWeight +
+                jobClassBase.social * jobClassWeight
+            ).coerceIn(0f, 1f)
+
+            val impulsive = (
+                baseRandom.impulsive * randomWeight +
+                (0.5f + totalEffects.impulsive).coerceIn(0f, 1f) * questionnaireWeight +
+                jobClassBase.impulsive * jobClassWeight
+            ).coerceIn(0f, 1f)
+
+            return PersonalityTraits(
+                courage = courage,
+                greed = greed,
+                curiosity = curiosity,
+                aggression = aggression,
+                social = social,
+                impulsive = impulsive
+            )
+        }
     }
 }

@@ -6,9 +6,11 @@ import com.watxaut.rolenonplayinggame.domain.model.CharacterStats
 import com.watxaut.rolenonplayinggame.domain.model.JobClass
 import com.watxaut.rolenonplayinggame.domain.model.LoreDiscovery
 import com.watxaut.rolenonplayinggame.domain.model.LoreSourceType
+import com.watxaut.rolenonplayinggame.domain.model.PersonalityQuestion
 import com.watxaut.rolenonplayinggame.domain.model.PersonalityTraits
 import com.watxaut.rolenonplayinggame.domain.model.PredefinedLore
 import com.watxaut.rolenonplayinggame.domain.model.PrincipalMissionProgress
+import com.watxaut.rolenonplayinggame.domain.model.QuestionAnswer
 import com.watxaut.rolenonplayinggame.domain.repository.CharacterRepository
 import com.watxaut.rolenonplayinggame.domain.repository.MissionProgressRepository
 import kotlinx.coroutines.flow.first
@@ -31,13 +33,21 @@ class CreateCharacterUseCase @Inject constructor(
 
     /**
      * Creates a new character with the given parameters.
+     * @param userId The user creating the character
+     * @param name The character's name
+     * @param jobClass The character's job class
+     * @param stats The initial stat allocation
+     * @param questionnaireAnswers Optional personality questionnaire answers
+     * @param questions Optional list of questions that were answered
      * @return Result containing the created Character or an error
      */
     suspend operator fun invoke(
         userId: String,
         name: String,
         jobClass: JobClass,
-        stats: CharacterStats
+        stats: CharacterStats,
+        questionnaireAnswers: List<QuestionAnswer>? = null,
+        questions: List<PersonalityQuestion>? = null
     ): Result<Character> {
         // Check if user has reached the character limit
         val existingCharacters = characterRepository.getCharactersByUserId(userId).first()
@@ -79,7 +89,9 @@ class CreateCharacterUseCase @Inject constructor(
             userId = userId,
             name = name,
             jobClass = jobClass,
-            initialStats = stats.toMap()
+            initialStats = stats.toMap(),
+            questionnaireAnswers = questionnaireAnswers,
+            questions = questions
         ).copy(
             activePrincipalMissionId = assignedMission?.id,
             principalMissionStartedAt = assignedMission?.let { Instant.now() }
