@@ -43,7 +43,7 @@ class SocialRepositoryImpl @Inject constructor(
     override suspend fun updateActiveLocation(
         characterId: String,
         location: String,
-        isAvailable: Boolean = true
+        isAvailable: Boolean
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val locationData = mapOf(
@@ -90,7 +90,7 @@ class SocialRepositoryImpl @Inject constructor(
     override suspend fun findNearbyCharacters(
         characterId: String,
         location: String,
-        maxResults: Int = 10
+        maxResults: Int
     ): Result<List<NearbyCharacter>> = withContext(Dispatchers.IO) {
         try {
             @Serializable
@@ -160,14 +160,6 @@ class SocialRepositoryImpl @Inject constructor(
             )
 
             @Serializable
-            data class EncounterResponse(
-                val success: Boolean,
-                val encounter: EncounterData,
-                val outcome: Map<String, Any?>,
-                val interaction_type: String
-            )
-
-            @Serializable
             data class EncounterData(
                 val id: String,
                 val character1_id: String,
@@ -179,18 +171,24 @@ class SocialRepositoryImpl @Inject constructor(
                 val completed_at: String?
             )
 
+            @Serializable
+            data class EncounterResponse(
+                val success: Boolean,
+                val encounter: EncounterData,
+                val outcome: Map<String, Any?>,
+                val interaction_type: String
+            )
+
             val request = EncounterRequest(
                 character1Id = character1Id,
                 character2Id = character2Id,
                 location = location
             )
 
-            val response = supabase.functions.invoke(
+            val encounterResponse = supabase.functions.invoke<EncounterResponse>(
                 function = FUNCTION_COORDINATE_ENCOUNTER,
                 body = request
             )
-
-            val encounterResponse = json.decodeFromString<EncounterResponse>(response.body?.toString() ?: "{}")
 
             val encounter = Encounter(
                 id = encounterResponse.encounter.id,
@@ -220,7 +218,7 @@ class SocialRepositoryImpl @Inject constructor(
      */
     override suspend fun getEncounterHistory(
         characterId: String,
-        limit: Int = 50
+        limit: Int
     ): Result<List<EncounterHistoryEntry>> = withContext(Dispatchers.IO) {
         try {
             @Serializable
@@ -237,7 +235,7 @@ class SocialRepositoryImpl @Inject constructor(
             val encountersData = supabase.from(TABLE_ENCOUNTERS)
                 .select() {
                     filter {
-                        or("character1_id.eq.$characterId,character2_id.eq.$characterId")
+                        or("character1_id=eq.$characterId,character2_id=eq.$characterId", filterByBrackets = false)
                         eq("status", "completed")
                     }
                     order("created_at", order = Order.DESCENDING)
@@ -336,7 +334,7 @@ class SocialRepositoryImpl @Inject constructor(
     /**
      * Get top characters from leaderboard (for social discovery)
      */
-    override suspend fun getTopCharacters(limit: Int = 20): Result<List<PublicCharacterProfile>> = withContext(Dispatchers.IO) {
+    override suspend fun getTopCharacters(limit: Int): Result<List<PublicCharacterProfile>> = withContext(Dispatchers.IO) {
         try {
             @Serializable
             data class PublicProfileData(
