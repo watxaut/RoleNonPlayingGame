@@ -7,6 +7,7 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.functions.functions
+import io.ktor.client.call.body
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -194,7 +195,8 @@ class SocialRepositoryImpl @Inject constructor(
                 body = request
             )
 
-            val encounterResponse = json.decodeFromString<EncounterResponse>(response.body.decodeToString())
+            val responseBody = response.body<String>()
+            val encounterResponse = json.decodeFromString<EncounterResponse>(responseBody)
 
             val encounter = Encounter(
                 id = encounterResponse.encounter.id,

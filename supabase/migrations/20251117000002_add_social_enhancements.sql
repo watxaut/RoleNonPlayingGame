@@ -20,14 +20,8 @@ SELECT
     c.vitality,
     -- Achievements count
     (SELECT COUNT(*) FROM achievements WHERE character_id = c.id) as achievement_count,
-    -- Combat stats
-    COALESCE((
-        SELECT COUNT(*)
-        FROM activity_logs
-        WHERE character_id = c.id
-        AND activity_type = 'combat'
-        AND description LIKE '%Defeated%'
-    ), 0) as total_kills,
+    -- Combat stats (from aggregate stats on characters table)
+    c.total_kills,
     -- Encounter history count
     (
         SELECT COUNT(*)

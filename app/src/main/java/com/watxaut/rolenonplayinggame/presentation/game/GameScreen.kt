@@ -453,7 +453,7 @@ fun CharacterStatsCard(
             Spacer(modifier = Modifier.height(4.dp))
 
             // XP bar
-            val xpForNextLevel = character.level * 100
+            val xpForNextLevel = character.experienceForNextLevel()
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
