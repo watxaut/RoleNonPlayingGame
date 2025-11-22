@@ -5,7 +5,8 @@ import com.watxaut.rolenonplayinggame.domain.model.*
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
-import io.github.jan.supabase.functions.Functions
+import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.functions.functions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -39,7 +40,7 @@ class SocialRepositoryImpl @Inject constructor(
     /**
      * Update character's active location for encounter matching
      */
-    suspend fun updateActiveLocation(
+    override suspend fun updateActiveLocation(
         characterId: String,
         location: String,
         isAvailable: Boolean = true
@@ -66,7 +67,7 @@ class SocialRepositoryImpl @Inject constructor(
     /**
      * Remove character from active locations (e.g., when app closes)
      */
-    suspend fun removeActiveLocation(characterId: String): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun removeActiveLocation(characterId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             supabase.from(TABLE_ACTIVE_LOCATIONS)
                 .delete {
@@ -86,7 +87,7 @@ class SocialRepositoryImpl @Inject constructor(
     /**
      * Find nearby characters in the same location
      */
-    suspend fun findNearbyCharacters(
+    override suspend fun findNearbyCharacters(
         characterId: String,
         location: String,
         maxResults: Int = 10
@@ -145,7 +146,7 @@ class SocialRepositoryImpl @Inject constructor(
     /**
      * Coordinate an encounter between two characters (calls Edge Function)
      */
-    suspend fun coordinateEncounter(
+    override suspend fun coordinateEncounter(
         character1Id: String,
         character2Id: String,
         location: String
@@ -217,7 +218,7 @@ class SocialRepositoryImpl @Inject constructor(
     /**
      * Get encounter history for a character
      */
-    suspend fun getEncounterHistory(
+    override suspend fun getEncounterHistory(
         characterId: String,
         limit: Int = 50
     ): Result<List<EncounterHistoryEntry>> = withContext(Dispatchers.IO) {
@@ -235,12 +236,11 @@ class SocialRepositoryImpl @Inject constructor(
 
             val encountersData = supabase.from(TABLE_ENCOUNTERS)
                 .select() {
-                    or {
-                        eq("character1_id", characterId)
-                        eq("character2_id", characterId)
+                    filter {
+                        or("character1_id.eq.$characterId,character2_id.eq.$characterId")
+                        eq("status", "completed")
                     }
-                    eq("status", "completed")
-                    order("created_at", ascending = false)
+                    order("created_at", order = Order.DESCENDING)
                     limit(limit.toLong())
                 }
                 .decodeList<EncounterHistoryData>()
@@ -278,7 +278,7 @@ class SocialRepositoryImpl @Inject constructor(
     /**
      * Get public profile for a character
      */
-    suspend fun getPublicProfile(characterId: String): Result<PublicCharacterProfile> = withContext(Dispatchers.IO) {
+    override suspend fun getPublicProfile(characterId: String): Result<PublicCharacterProfile> = withContext(Dispatchers.IO) {
         try {
             @Serializable
             data class PublicProfileData(
@@ -336,7 +336,7 @@ class SocialRepositoryImpl @Inject constructor(
     /**
      * Get top characters from leaderboard (for social discovery)
      */
-    suspend fun getTopCharacters(limit: Int = 20): Result<List<PublicCharacterProfile>> = withContext(Dispatchers.IO) {
+    override suspend fun getTopCharacters(limit: Int = 20): Result<List<PublicCharacterProfile>> = withContext(Dispatchers.IO) {
         try {
             @Serializable
             data class PublicProfileData(
@@ -359,8 +359,8 @@ class SocialRepositoryImpl @Inject constructor(
 
             val profilesData = supabase.from(VIEW_PUBLIC_PROFILES)
                 .select() {
-                    order("level", ascending = false)
-                    order("total_kills", ascending = false)
+                    order("level", order = Order.DESCENDING)
+                    order("total_kills", order = Order.DESCENDING)
                     limit(limit.toLong())
                 }
                 .decodeList<PublicProfileData>()

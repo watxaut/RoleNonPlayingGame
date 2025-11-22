@@ -31,13 +31,6 @@ data class PublicCharacterProfile(
     val powerLevel: Int = (strength + intelligence + agility + vitality) / 4 + level * 2
 ) {
     /**
-     * Get job class color for UI display
-     */
-    fun getJobClassColor(): Long {
-        return jobClass.getColor()
-    }
-
-    /**
      * Get formatted creation date
      */
     fun getAccountAge(): String {
