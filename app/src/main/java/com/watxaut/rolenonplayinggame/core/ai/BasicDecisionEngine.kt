@@ -37,6 +37,14 @@ class BasicDecisionEngine @Inject constructor() {
             return handleActiveQuest(character, context)
         }
 
+        // Priority 4: SOCIAL - Check for encounter opportunities
+        if (context.hasNearbyCharacters()) {
+            val encounterDecision = evaluateSocialEncounter(character, context)
+            if (encounterDecision != null) {
+                return encounterDecision
+            }
+        }
+
         // Default: Explore or idle
         return handleIdle(character, context)
     }
@@ -115,6 +123,43 @@ class BasicDecisionEngine @Inject constructor() {
     }
 
     /**
+     * Priority 4: SOCIAL
+     * Evaluate if character should initiate an encounter with nearby character
+     * Returns null if character decides not to engage
+     */
+    private fun evaluateSocialEncounter(character: Character, context: DecisionContext): Decision? {
+        val personality = character.personalityTraits
+
+        // Very low health - don't engage socially
+        if (context.getHealthPercentage() < 0.5f) {
+            return null
+        }
+
+        // Find the most compatible nearby character
+        val nearbyChars = context.nearbyCharacters
+
+        // Social personality characters are much more likely to engage
+        val encounterChance = personality.social * 0.3f // 0-30% chance per decision cycle
+
+        if (random.nextFloat() < encounterChance && nearbyChars.isNotEmpty()) {
+            // Pick a character - prefer similar levels and high social personalities
+            val sortedByCompatibility = nearbyChars.sortedByDescending { other ->
+                val levelDiff = kotlin.math.abs(character.level - other.level)
+                val levelCompatibility = 1.0f / (1.0f + levelDiff * 0.2f)
+                other.personalitySocial * 0.6f + levelCompatibility * 0.4f
+            }
+
+            val target = sortedByCompatibility.first()
+            return Decision.Encounter(
+                otherCharacterId = target.id,
+                otherCharacterName = target.name
+            )
+        }
+
+        return null // No encounter this cycle
+    }
+
+    /**
      * Fallback: IDLE
      * No urgent priorities - explore, hunt, or idle based on personality
      */
@@ -181,6 +226,7 @@ class BasicDecisionEngine @Inject constructor() {
             is Decision.AcceptQuest -> personality.curiosity * 0.5f + (1f - personality.impulsive) * 0.5f
             is Decision.HealAtInn -> (1f - personality.greed) * 0.3f + (1f - personality.impulsive) * 0.7f
             is Decision.ContinueQuest -> 1f - personality.impulsive
+            is Decision.Encounter -> personality.social
             Decision.Idle -> 1f - personality.curiosity
         }
     }

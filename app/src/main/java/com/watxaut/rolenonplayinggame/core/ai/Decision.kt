@@ -48,6 +48,11 @@ sealed class Decision {
      * Character decides to buy items
      */
     data class Shop(val location: String, val itemType: String) : Decision()
+
+    /**
+     * Character decides to approach another character for interaction
+     */
+    data class Encounter(val otherCharacterId: String, val otherCharacterName: String) : Decision()
 }
 
 /**
@@ -90,9 +95,21 @@ data class DecisionContext(
     val nearbyLocations: List<String> = emptyList(),
     val canRest: Boolean = true,
     val hasInnAccess: Boolean = false,
-    val innHealCost: Long = 10L
+    val innHealCost: Long = 10L,
+    val nearbyCharacters: List<NearbyCharacterInfo> = emptyList() // Social feature
 ) {
     fun getHealthPercentage(): Float = currentHp.toFloat() / maxHp.toFloat()
     fun isInDanger(): Boolean = getHealthPercentage() < 0.3f
     fun isLowResources(): Boolean = gold < 50L
+    fun hasNearbyCharacters(): Boolean = nearbyCharacters.isNotEmpty()
 }
+
+/**
+ * Simple data class for nearby character information in decision context
+ */
+data class NearbyCharacterInfo(
+    val id: String,
+    val name: String,
+    val level: Int,
+    val personalitySocial: Float
+)

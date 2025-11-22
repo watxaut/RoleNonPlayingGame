@@ -16,4 +16,10 @@ sealed class Screen(val route: String) {
         fun createRoute(characterId: String) = "character_sheet/$characterId"
     }
     data object OfflineSummary : Screen("offline_summary")
+    data object PublicProfile : Screen("public_profile/{characterId}") {
+        fun createRoute(characterId: String) = "public_profile/$characterId"
+    }
+    data object EncounterHistory : Screen("encounter_history/{characterId}") {
+        fun createRoute(characterId: String) = "encounter_history/$characterId"
+    }
 }

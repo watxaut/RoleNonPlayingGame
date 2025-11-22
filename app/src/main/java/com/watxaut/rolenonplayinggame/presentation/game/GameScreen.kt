@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -81,6 +82,7 @@ import java.time.format.DateTimeFormatter
 fun GameScreen(
     characterId: String,
     onNavigateBack: () -> Unit,
+    onNavigateToEncounterHistory: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
     viewModel: GameViewModel = hiltViewModel()
 ) {
@@ -111,6 +113,18 @@ fun GameScreen(
                         onNavigateBack()
                     }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
+                actions = {
+                    // Encounter History button
+                    if (onNavigateToEncounterHistory != null) {
+                        IconButton(onClick = { onNavigateToEncounterHistory(characterId) }) {
+                            Icon(
+                                imageVector = Icons.Default.Group,
+                                contentDescription = "View Encounter History",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -439,7 +453,7 @@ fun CharacterStatsCard(
             Spacer(modifier = Modifier.height(4.dp))
 
             // XP bar
-            val xpForNextLevel = character.level * 100
+            val xpForNextLevel = character.experienceForNextLevel()
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
