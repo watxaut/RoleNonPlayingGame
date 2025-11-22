@@ -194,7 +194,7 @@ class SocialRepositoryImpl @Inject constructor(
                 body = request
             )
 
-            val encounterResponse = json.decodeFromString<EncounterResponse>(response.data?.decodeToString() ?: "{}")
+            val encounterResponse = json.decodeFromString<EncounterResponse>(response.bodyAsText())
 
             val encounter = Encounter(
                 id = encounterResponse.encounter.id,
